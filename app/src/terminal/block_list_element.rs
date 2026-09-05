@@ -172,7 +172,6 @@ enum SelectionCursorRenderLocation {
     End,
 }
 
-const OVERFLOW_BUTTON_ICON_PATH: &str = "bundled/svg/overflow.svg";
 /// The number of lines from the top of the blocklist where we should show the snackbar toggle
 /// button on mouse hover when the snackbar is collapsed.
 const SNACKBAR_TOGGLE_BUTTON_HOVER_LINES: f32 = 4.;
@@ -1077,34 +1076,6 @@ impl BlockListElement {
             .warp_theme
             .sub_text_color(self.warp_theme.surface_2())
             .into_solid();
-
-        let icon = Container::new(
-            ConstrainedBox::new(Icon::new(OVERFLOW_BUTTON_ICON_PATH, icon_color).finish())
-                .with_height(26.)
-                .with_width(26.)
-                .finish(),
-        );
-
-        self.overflow_menu_button = Some(
-            SavePosition::new(
-                render_hoverable_block_button(
-                    icon,
-                    None,
-                    false,
-                    true,
-                    self.mouse_states.overflow_menu_button_mouse_state.clone(),
-                    &self.warp_theme,
-                    &self.ui_builder,
-                    move |ctx, _, _| {
-                        ctx.dispatch_typed_action(TerminalAction::BlockListContextMenu(
-                            BlockListMenuSource::BlockOverflowButton { block_index },
-                        ));
-                    },
-                ),
-                format!("context_menu_button_{block_index}").as_str(),
-            )
-            .finish(),
-        );
 
         let snackbar_toggle_icon;
         let rounded_corners;

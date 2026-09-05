@@ -24905,7 +24905,7 @@ impl TerminalView {
             }),
             Box::new(
                 move |range,
-                      hovered_index,
+                      _hovered_index,
                       active_filter_editor_block_index,
                       filtered_blocks,
                       mouse_states,
@@ -24920,7 +24920,6 @@ impl TerminalView {
                                     filtered_blocks.contains(block_index)
                                 });
                             if has_active_filter
-                                || hovered_index == Some(*block_index)
                                 || active_filter_editor_block_index == Some(*block_index)
                             {
                                 Some(Self::render_filter_element(
