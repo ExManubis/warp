@@ -365,10 +365,10 @@ use crate::settings_view::{SettingsSection, SettingsView, SettingsViewEvent, fla
 use crate::shell_indicator::ShellIndicatorType;
 use crate::tab::{
     COMPACT_TAB_WIDTH_THRESHOLD, ColorPickerTarget, MOVE_TO_GROUP_LABEL, NewSessionMenuItem,
-    PaneNameMenuTarget, SelectedTabColor, TAB_BAR_BORDER_HEIGHT, TAB_INDICATOR_HEIGHT,
-    TAB_PIN_INDICATOR_ICON_SIZE, TAB_PIN_VANISH_THRESHOLD, TabBarState, TabComponent, TabData,
-    TabShortcutModifierState, TabTelemetryAction, color_picker_menu_items, next_tab_color,
-    tab_position_id, uses_vertical_tabs,
+    PaneNameMenuTarget, SelectedTabColor, TAB_INDICATOR_HEIGHT, TAB_PIN_INDICATOR_ICON_SIZE,
+    TAB_PIN_VANISH_THRESHOLD, TabBarState, TabComponent, TabData, TabShortcutModifierState,
+    TabTelemetryAction, color_picker_menu_items, next_tab_color, tab_position_id,
+    uses_vertical_tabs,
 };
 use crate::tab_configs::action_sidecar::SidecarItemKind;
 use crate::tab_configs::remove_confirmation_dialog::{
@@ -577,8 +577,7 @@ const TAB_BAR_PADDING_RIGHT: f32 = 8.;
 const TITLE_BAR_SEARCH_BAR_MAX_WIDTH: f32 = 320.;
 const TITLE_BAR_SEARCH_BAR_SLOT_PADDING: f32 = 8.;
 
-// The total height taken up by the tab bar, including its bottom border.
-pub const TOTAL_TAB_BAR_HEIGHT: f32 = TAB_BAR_HEIGHT + TAB_BAR_BORDER_HEIGHT;
+pub const TOTAL_TAB_BAR_HEIGHT: f32 = TAB_BAR_HEIGHT;
 
 const TAB_BAR_ICON_PADDING: f32 = 4.;
 
@@ -21426,9 +21425,6 @@ impl Workspace {
         .with_height(TAB_BAR_HEIGHT)
         .finish();
 
-        let tab_bar_border =
-            Border::bottom(TAB_BAR_BORDER_HEIGHT).with_border_fill(appearance.theme().outline());
-
         let tab_bar_element = Container::new(
             EventHandler::new(Clipped::new(self.render_tab_bar_hoverable(bar_contents)).finish())
                 .on_back_mouse_down(move |ctx, _app, _position| {
@@ -21442,7 +21438,6 @@ impl Workspace {
                 .finish(),
         )
         .with_background(workspace_chrome_fill())
-        .with_border(tab_bar_border)
         .finish();
 
         let dimming_color = appearance.theme().background().into();
