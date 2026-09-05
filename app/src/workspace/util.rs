@@ -1,8 +1,13 @@
+use std::sync::OnceLock;
+
+use instant::Instant;
 use pathfinder_color::ColorU;
 use pathfinder_geometry::vector::vec2f;
 use serde::{Deserialize, Serialize};
 use warp_core::ui::color::coloru_with_opacity;
-use warpui::elements::{Border, Fill, MouseStateHandle};
+use warpui::elements::{
+    Border, CacheOption, Clipped, CornerRadius, Element, Fill, Image, MouseStateHandle,
+};
 use warpui::{AppContext, EntityId, Gradient, SingletonEntity, ViewContext, ViewHandle, WindowId};
 
 use super::OneTimeModalModel;
@@ -437,11 +442,35 @@ pub fn metallic_border() -> Border {
 }
 
 pub fn get_pane_card_fill(window_id: WindowId, app: &AppContext) -> Fill {
-    let theme = Appearance::as_ref(app).theme();
-    let opacity = WindowSettings::as_ref(app)
+    get_terminal_background_fill(window_id, app)
+}
+
+pub fn theme_background_image(
+    window_id: WindowId,
+    corner_radius: CornerRadius,
+    app: &AppContext,
+) -> Option<Box<dyn Element>> {
+    let img = Appearance::as_ref(app).theme().background_image()?;
+    let opacity_ratio = WindowSettings::as_ref(app)
         .background_opacity
-        .effective_opacity(window_id, app);
-    theme.background().with_opacity(opacity).into()
+        .effective_opacity(window_id, app) as f32
+        / 100.;
+    Some(
+        Clipped::new(
+            Image::new(img.source(), CacheOption::Original)
+                .stretch()
+                .with_opacity(opacity_ratio)
+                .with_corner_radius(corner_radius)
+                .enable_animation_with_start_time(theme_background_image_animation_start())
+                .finish(),
+        )
+        .finish(),
+    )
+}
+
+fn theme_background_image_animation_start() -> Instant {
+    static START: OnceLock<Instant> = OnceLock::new();
+    *START.get_or_init(Instant::now)
 }
 
 pub fn get_terminal_background_fill(

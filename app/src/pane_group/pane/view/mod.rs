@@ -10,7 +10,7 @@ pub use header_content::{
 use pathfinder_geometry::rect::RectF;
 use warpui::elements::{
     Border, Clipped, ConstrainedBox, Container, CornerRadius, DropTarget, DropTargetData, Flex,
-    MainAxisSize, ParentElement, Radius, SavePosition, Shrinkable,
+    MainAxisSize, ParentElement, Radius, SavePosition, Shrinkable, Stack,
 };
 use warpui::keymap::EditableBinding;
 use warpui::presenter::ChildView;
@@ -31,7 +31,7 @@ use crate::settings::{PaneSettings, PaneSettingsChangedEvent};
 use crate::util::bindings::CustomAction;
 use crate::workspace::util::{
     FLOATING_CARD_RADIUS, FLOATING_CHROME_INSET, get_pane_card_fill, metallic_border,
-    workspace_chrome_fill,
+    theme_background_image, workspace_chrome_fill,
 };
 
 const HAS_SHARED_OBJECT_CONTEXT_KEY: &str = "PaneView_HasSharedObject";
@@ -423,14 +423,25 @@ impl<P: BackingView> View for PaneView<P> {
         column.add_child(Shrinkable::new(1., ChildView::new(&active_child).finish()).finish());
 
         let dim_even_if_focused = pane_configuration.dim_even_if_focused();
+        let window_id = self.header.window_id(app);
+        let card_radius = CornerRadius::with_all(Radius::Pixels(FLOATING_CARD_RADIUS));
         let mut card = Container::new(Clipped::new(column.finish()).finish())
-            .with_background(get_pane_card_fill(self.header.window_id(app), app))
-            .with_corner_radius(CornerRadius::with_all(Radius::Pixels(FLOATING_CARD_RADIUS)));
+            .with_background(get_pane_card_fill(window_id, app))
+            .with_corner_radius(card_radius);
         if split_pane_state.is_focused() && !dim_even_if_focused {
             card = card.with_foreground_border(metallic_border());
         }
 
-        let mut container = Container::new(card.finish())
+        let card = if let Some(image) = theme_background_image(window_id, card_radius, app) {
+            let mut card_stack = Stack::new();
+            card_stack.add_child(image);
+            card_stack.add_child(card.finish());
+            Clipped::new(card_stack.finish()).finish()
+        } else {
+            card.finish()
+        };
+
+        let mut container = Container::new(card)
             .with_background(workspace_chrome_fill())
             .with_uniform_padding(PANE_CARD_PADDING);
         if pane_configuration.show_accent_border {

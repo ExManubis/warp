@@ -52,7 +52,6 @@ use autoupdate::AutoupdateStage;
 #[cfg(target_os = "macos")]
 use command::blocking::Command;
 use futures::Future;
-use instant::Instant;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 pub(crate) use onboarding::OnboardingTutorial;
@@ -91,10 +90,10 @@ use warpui::clipboard::ClipboardContent;
 #[cfg(target_family = "wasm")]
 use warpui::elements::Percentage;
 use warpui::elements::{
-    Align, Border, CacheOption, ChildAnchor, ChildView, Clipped, ConstrainedBox, Container,
+    Align, Border, ChildAnchor, ChildView, Clipped, ConstrainedBox, Container,
     CornerRadius, CrossAxisAlignment, Dismiss, DispatchEventResult, DragAxis, Draggable,
     DraggableState, DropTarget, Element, Empty, EventHandler, Expanded, Fill as ElementFill, Flex,
-    Highlight, Hoverable, Icon as WarpUiIcon, Image, MainAxisAlignment, MainAxisSize,
+    Highlight, Hoverable, Icon as WarpUiIcon, MainAxisAlignment, MainAxisSize,
     MouseInBehavior, MouseStateHandle, OffsetPositioning, ParentAnchor, ParentElement,
     ParentOffsetBounds, PositionedElementAnchor, PositionedElementOffsetBounds, Radius, Rect,
     SavePosition, Shrinkable, SizeConstraintCondition, SizeConstraintSwitch, Stack, Text,
@@ -1070,7 +1069,6 @@ pub struct Workspace {
     import_modal: ViewHandle<ImportModal>,
     theme_chooser_view: ViewHandle<ThemeChooser>,
     previous_theme: Option<ThemeKind>,
-    background_image_animation_start_time: Instant,
     reward_modal: ViewHandle<Modal<RewardView>>,
     reward_modal_pending: Option<RewardKind>,
     pub(crate) current_workspace_state: WorkspaceState,
@@ -3442,7 +3440,6 @@ impl Workspace {
             ctrl_tab_palette,
             mouse_states: Default::default(),
             previous_theme: None,
-            background_image_animation_start_time: Instant::now(),
             settings_pane,
             theme_chooser_view,
             reward_modal,
@@ -27713,29 +27710,6 @@ impl View for Workspace {
         let workspace = Container::new(stack.finish()).with_corner_radius(window_corner_radius);
 
         let mut stack = Stack::new();
-        let theme = appearance.theme();
-        let window_settings = WindowSettings::as_ref(app);
-        let background_opacity = window_settings
-            .background_opacity
-            .effective_opacity(self.window_id, app);
-
-        if let Some(img) = theme.background_image() {
-            let opacity_ratio = background_opacity as f32 / 100.;
-            stack.add_child(
-                Shrinkable::new(
-                    1.,
-                    Image::new(img.source(), CacheOption::Original)
-                        .cover()
-                        .with_opacity(opacity_ratio)
-                        .with_corner_radius(window_corner_radius)
-                        .enable_animation_with_start_time(
-                            self.background_image_animation_start_time,
-                        )
-                        .finish(),
-                )
-                .finish(),
-            );
-        }
         stack.add_child(workspace.with_background(workspace_chrome_fill()).finish());
 
         let input_position_id = self
