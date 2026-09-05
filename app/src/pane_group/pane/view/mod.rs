@@ -7,9 +7,7 @@ pub use header::PaneHeaderAction::CustomAction as PaneHeaderCustomAction;
 pub use header_content::{
     HeaderContent, HeaderRenderContext, StandardHeader, StandardHeaderOptions,
 };
-use pathfinder_color::ColorU;
 use pathfinder_geometry::rect::RectF;
-use pathfinder_geometry::vector::vec2f;
 use warpui::elements::{
     Border, Clipped, ConstrainedBox, Container, CornerRadius, DropTarget, DropTargetData, Flex,
     MainAxisSize, ParentElement, Radius, SavePosition, Shrinkable,
@@ -17,8 +15,8 @@ use warpui::elements::{
 use warpui::keymap::EditableBinding;
 use warpui::presenter::ChildView;
 use warpui::{
-    AppContext, Element, Entity, EntityId, Gradient, ModelHandle, SingletonEntity, TypedActionView,
-    View, ViewContext, ViewHandle,
+    AppContext, Element, Entity, EntityId, ModelHandle, SingletonEntity, TypedActionView, View,
+    ViewContext, ViewHandle,
 };
 
 use super::{
@@ -31,24 +29,14 @@ use crate::pane_group::{Direction, SplitPaneState, TabBarHoverIndex};
 use crate::server::telemetry::SharingDialogSource;
 use crate::settings::{PaneSettings, PaneSettingsChangedEvent};
 use crate::util::bindings::CustomAction;
-use crate::workspace::util::{get_pane_card_fill, workspace_chrome_fill};
+use crate::workspace::util::{
+    FLOATING_CARD_RADIUS, FLOATING_CHROME_INSET, get_pane_card_fill, metallic_border,
+    workspace_chrome_fill,
+};
 
 const HAS_SHARED_OBJECT_CONTEXT_KEY: &str = "PaneView_HasSharedObject";
 
-pub const PANE_CARD_PADDING: f32 = 6.;
-const PANE_CARD_RADIUS: f32 = 8.;
-const PANE_ACTIVE_BORDER_HIGHLIGHT: ColorU = ColorU {
-    r: 0x5C,
-    g: 0x5C,
-    b: 0x5C,
-    a: 255,
-};
-const PANE_ACTIVE_BORDER_SHADOW: ColorU = ColorU {
-    r: 0x2A,
-    g: 0x2A,
-    b: 0x2A,
-    a: 255,
-};
+pub const PANE_CARD_PADDING: f32 = FLOATING_CHROME_INSET;
 
 /// Max width applied to the pane header while the pane renders as a floating drag preview.
 /// During a pane drag the pane is laid out with unbounded constraints; `MainAxisSize::Min`
@@ -437,16 +425,9 @@ impl<P: BackingView> View for PaneView<P> {
         let dim_even_if_focused = pane_configuration.dim_even_if_focused();
         let mut card = Container::new(Clipped::new(column.finish()).finish())
             .with_background(get_pane_card_fill(self.header.window_id(app), app))
-            .with_corner_radius(CornerRadius::with_all(Radius::Pixels(PANE_CARD_RADIUS)));
+            .with_corner_radius(CornerRadius::with_all(Radius::Pixels(FLOATING_CARD_RADIUS)));
         if split_pane_state.is_focused() && !dim_even_if_focused {
-            card = card.with_foreground_border(Border::all(1.).with_border_gradient(
-                vec2f(0., 0.),
-                vec2f(1., 1.),
-                Gradient {
-                    start: PANE_ACTIVE_BORDER_HIGHLIGHT,
-                    end: PANE_ACTIVE_BORDER_SHADOW,
-                },
-            ));
+            card = card.with_foreground_border(metallic_border());
         }
 
         let mut container = Container::new(card.finish())

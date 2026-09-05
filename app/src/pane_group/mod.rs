@@ -7907,7 +7907,14 @@ impl PaneGroup {
         // border.
         let window_bounds = window_bounds.contract(crate::workspace::WORKSPACE_PADDING);
 
-        let tab_bar_offset = vec2f(0.0, workspace::TOTAL_TAB_BAR_HEIGHT);
+        let tab_bar_offset = vec2f(
+            0.0,
+            if crate::tab::uses_vertical_tabs(ctx) {
+                workspace::TAB_BAR_HEIGHT
+            } else {
+                workspace::TOTAL_TAB_BAR_HEIGHT
+            },
+        );
         RectF::new(
             window_bounds.origin() + tab_bar_offset,
             window_bounds.size() - tab_bar_offset,

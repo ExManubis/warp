@@ -1,8 +1,9 @@
 use pathfinder_color::ColorU;
+use pathfinder_geometry::vector::vec2f;
 use serde::{Deserialize, Serialize};
 use warp_core::ui::color::coloru_with_opacity;
-use warpui::elements::{Fill, MouseStateHandle};
-use warpui::{AppContext, EntityId, SingletonEntity, ViewContext, ViewHandle, WindowId};
+use warpui::elements::{Border, Fill, MouseStateHandle};
+use warpui::{AppContext, EntityId, Gradient, SingletonEntity, ViewContext, ViewHandle, WindowId};
 
 use super::OneTimeModalModel;
 use crate::appearance::Appearance;
@@ -389,9 +390,50 @@ const WORKSPACE_CHROME_COLOR: ColorU = ColorU {
     a: 255,
 };
 const WORKSPACE_CHROME_OPACITY: u8 = 99;
+const FLOATING_TAB_ACTIVE_COLOR: ColorU = ColorU {
+    r: 0x17,
+    g: 0x18,
+    b: 0x18,
+    a: 255,
+};
+const METALLIC_BORDER_HIGHLIGHT: ColorU = ColorU {
+    r: 0x5C,
+    g: 0x5C,
+    b: 0x5C,
+    a: 255,
+};
+const METALLIC_BORDER_SHADOW: ColorU = ColorU {
+    r: 0x2A,
+    g: 0x2A,
+    b: 0x2A,
+    a: 255,
+};
+
+pub const FLOATING_CHROME_INSET: f32 = 6.;
+pub const TAB_FLOATING_VERTICAL_INSET: f32 = 3.;
+pub const FLOATING_CARD_RADIUS: f32 = 8.;
 
 pub fn workspace_chrome_fill() -> Fill {
     coloru_with_opacity(WORKSPACE_CHROME_COLOR, WORKSPACE_CHROME_OPACITY).into()
+}
+
+pub fn floating_tab_fill(is_active: bool) -> Fill {
+    if is_active {
+        FLOATING_TAB_ACTIVE_COLOR.into()
+    } else {
+        workspace_chrome_fill()
+    }
+}
+
+pub fn metallic_border() -> Border {
+    Border::all(1.).with_border_gradient(
+        vec2f(0., 0.),
+        vec2f(1., 1.),
+        Gradient {
+            start: METALLIC_BORDER_HIGHLIGHT,
+            end: METALLIC_BORDER_SHADOW,
+        },
+    )
 }
 
 pub fn get_pane_card_fill(window_id: WindowId, app: &AppContext) -> Fill {

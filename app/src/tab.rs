@@ -56,6 +56,7 @@ use crate::workspace::tab_group::{TabGroup, TabGroupId};
 use crate::workspace::tab_settings::{
     TabCloseButtonPosition, TabSettings, VerticalTabsDisplayGranularity,
 };
+use crate::workspace::util::{FLOATING_CARD_RADIUS, floating_tab_fill, metallic_border};
 use crate::workspace::{
     PaneViewLocator, TabBarDropTargetData, TabBarLocation, TabContextMenuAnchor, WorkspaceAction,
 };
@@ -1098,6 +1099,7 @@ pub struct TabComponent<'a> {
     /// (multi-tab menu vs single-tab menu).
     is_in_multi_tab_selection: bool,
     shortcut_hint_label: Option<String>,
+    floating_horizontal: bool,
 }
 
 /// Structure that holds TabComponent styles.
@@ -1267,6 +1269,7 @@ impl<'a> TabComponent<'a> {
             locator,
             is_in_multi_tab_selection: false,
             shortcut_hint_label,
+            floating_horizontal: !uses_vertical_tabs(ctx),
         }
     }
 
@@ -1793,7 +1796,32 @@ impl<'a> TabComponent<'a> {
         let is_active = self.is_active_tab();
         let is_in_multi_tab_selection = self.is_in_multi_tab_selection;
 
-        let (background_color, border_fill) = if FeatureFlag::NewTabStyling.is_enabled() {
+        let (background_color, border_fill) = if self.floating_horizontal {
+            let bg = if let Some(custom_background) = self.styles.background {
+                let base_opacity = if is_active || (is_in_multi_tab_selection && is_hovered) {
+                    60
+                } else if is_in_multi_tab_selection {
+                    if self.grouped_member { 55 } else { 30 }
+                } else if is_hovered {
+                    40
+                } else {
+                    20
+                };
+                let opacity = (base_opacity as f32 * self.background_opacity as f32 / 100.) as u8;
+                match custom_background {
+                    ThemeFill::Solid(color) => coloru_with_opacity(color, opacity).into(),
+                    ThemeFill::VerticalGradient(gradient) => {
+                        coloru_with_opacity(gradient.get_most_opaque(), opacity).into()
+                    }
+                    ThemeFill::HorizontalGradient(gradient) => {
+                        coloru_with_opacity(gradient.get_most_opaque(), opacity).into()
+                    }
+                }
+            } else {
+                floating_tab_fill(is_active)
+            };
+            (bg, None)
+        } else if FeatureFlag::NewTabStyling.is_enabled() {
             // If there is a custom tab background, we overlay it with varying opacities.
             let bg = if let Some(custom_background) = self.styles.background {
                 let base_opacity = if is_active || (is_in_multi_tab_selection && is_hovered) {
@@ -1837,7 +1865,7 @@ impl<'a> TabComponent<'a> {
                 internal_colors::fg_overlay_3(theme)
             };
 
-            (bg, border)
+            (bg, Some(border))
         } else {
             let tab_opacity = if is_active || is_hovered {
                 WARP_2_HOVERED_TAB_COLOR_OPACITY
@@ -1865,7 +1893,7 @@ impl<'a> TabComponent<'a> {
                 internal_colors::fg_overlay_1(theme)
             };
 
-            (bg, border)
+            (bg, Some(border))
         };
 
         let build_full_content = |reserve_pin_space: bool| -> Box<dyn Element> {
@@ -2093,22 +2121,40 @@ impl<'a> TabComponent<'a> {
             };
         }
 
-        let mut tab = Container::new(stack)
-            .with_vertical_padding(2.)
-            .with_background(background_color);
-        if FeatureFlag::NewTabStyling.is_enabled() {
-            let is_first_tab = self.tab_index == 0;
-            tab = tab.with_border(
-                Border::all(1.)
-                    // We only include a left border on the very first tab to avoid double borders.
-                    .with_sides(false, is_first_tab, false, true)
-                    .with_border_fill(border_fill),
-            );
+        let mut tab = if self.floating_horizontal {
+            Container::new(
+                Flex::column()
+                    .with_main_axis_size(MainAxisSize::Max)
+                    .with_main_axis_alignment(MainAxisAlignment::Center)
+                    .with_child(stack)
+                    .finish(),
+            )
+            .with_background(background_color)
+            .with_corner_radius(CornerRadius::with_all(Radius::Pixels(FLOATING_CARD_RADIUS)))
+            .with_border(metallic_border())
         } else {
-            tab = tab
-                .with_corner_radius(CornerRadius::with_all(Radius::Pixels(4.0)))
-                .with_border(Border::all(1.).with_border_fill(border_fill));
-        }
+            let mut tab = Container::new(stack)
+                .with_vertical_padding(2.)
+                .with_background(background_color);
+            if FeatureFlag::NewTabStyling.is_enabled() {
+                let is_first_tab = self.tab_index == 0;
+                tab = tab.with_border(
+                    Border::all(1.)
+                        // We only include a left border on the very first tab to avoid double borders.
+                        .with_sides(false, is_first_tab, false, true)
+                        .with_border_fill(
+                            border_fill.expect("New tab styling always sets a border"),
+                        ),
+                );
+            } else {
+                tab = tab
+                    .with_corner_radius(CornerRadius::with_all(Radius::Pixels(4.0)))
+                    .with_border(Border::all(1.).with_border_fill(
+                        border_fill.expect("Legacy tab styling always sets a border"),
+                    ));
+            }
+            tab
+        };
 
         // If the tab is being dragged, add an opaque background behind it
         if is_tab_dragging {
@@ -2159,6 +2205,7 @@ impl UiComponent for TabComponent<'_> {
         let mouse_close_state = self.tab.close_mouse_state.clone();
         // Capture before `self` is moved into the Hoverable closure below.
         let for_drag_ghost = self.for_drag_ghost;
+        let floating_horizontal = self.floating_horizontal;
         let sole_grouped_member = self.sole_grouped_member;
         let locator = self.locator;
         let is_in_multi_tab_selection = self.is_in_multi_tab_selection;
@@ -2401,7 +2448,7 @@ impl UiComponent for TabComponent<'_> {
             let tab_with_drag: Box<dyn Element> = draggable.finish();
             SavePosition::new(tab_with_drag, &tab_position_id(tab_index)).finish()
         };
-        if FeatureFlag::NewTabStyling.is_enabled() {
+        if FeatureFlag::NewTabStyling.is_enabled() || floating_horizontal {
             Shrinkable::new(1.0, full_tab)
         } else {
             Shrinkable::new(

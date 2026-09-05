@@ -155,8 +155,9 @@ use super::tab_settings::{
     VerticalTabsDisplayGranularity, WorkspaceDecorationVisibility,
 };
 use super::util::{
-    PaneViewLocator, TabMovement, TerminalSessionFallbackBehavior, WelcomeTipsViewState,
-    WorkspaceMouseStates, WorkspaceState, workspace_chrome_fill,
+    FLOATING_CHROME_INSET, PaneViewLocator, TAB_FLOATING_VERTICAL_INSET, TabMovement,
+    TerminalSessionFallbackBehavior, WelcomeTipsViewState, WorkspaceMouseStates, WorkspaceState,
+    workspace_chrome_fill,
 };
 use super::{ActiveSession, TabBarDropTargetData, TabBarLocation, WorkspaceRegistry};
 use crate::ai::active_agent_views_model::ActiveAgentViewsModel;
@@ -577,7 +578,8 @@ const TAB_BAR_PADDING_RIGHT: f32 = 8.;
 const TITLE_BAR_SEARCH_BAR_MAX_WIDTH: f32 = 320.;
 const TITLE_BAR_SEARCH_BAR_SLOT_PADDING: f32 = 8.;
 
-pub const TOTAL_TAB_BAR_HEIGHT: f32 = TAB_BAR_HEIGHT;
+pub const TOTAL_TAB_BAR_HEIGHT: f32 =
+    TAB_BAR_HEIGHT + FLOATING_CHROME_INSET + TAB_FLOATING_VERTICAL_INSET;
 
 const TAB_BAR_ICON_PADDING: f32 = 4.;
 
@@ -14374,7 +14376,12 @@ impl Workspace {
     /// Updates the titlebar height to match the scaled tab bar height.
     pub fn update_titlebar_height(&self, ctx: &mut ViewContext<Self>) {
         let zoom_factor = WindowSettings::as_ref(ctx).zoom_level.as_zoom_factor();
-        let scaled_tab_bar_height = (TOTAL_TAB_BAR_HEIGHT * zoom_factor) as f64;
+        let tab_bar_height = if uses_vertical_tabs(ctx) {
+            TAB_BAR_HEIGHT
+        } else {
+            TOTAL_TAB_BAR_HEIGHT
+        };
+        let scaled_tab_bar_height = (tab_bar_height * zoom_factor) as f64;
 
         if let Some(platform_window) = ctx.windows().platform_window(ctx.window_id()) {
             platform_window
@@ -21096,15 +21103,19 @@ impl Workspace {
                         }
                         // Filtered above; the group must exist in `tab_groups`.
                         let group = self.tab_groups[group_id].clone();
-                        tab_bar.add_child(self.render_horizontal_tab_group(
-                            &group,
-                            *first_index,
-                            *run_len,
-                            tab_bar_state,
-                            *first_index == 0,
-                            appearance,
-                            ctx,
-                        ));
+                        tab_bar.add_child(
+                            Container::new(self.render_horizontal_tab_group(
+                                &group,
+                                *first_index,
+                                *run_len,
+                                tab_bar_state,
+                                *first_index == 0,
+                                appearance,
+                                ctx,
+                            ))
+                            .with_margin_right(FLOATING_CHROME_INSET)
+                            .finish(),
+                        );
                     }
                     TabBarSlot::Single { index } => {
                         let i = *index;
@@ -21126,7 +21137,11 @@ impl Workspace {
                                 .finish(),
                             );
                         } else {
-                            tab_bar.add_child(self.render_tab_in_tab_bar(i, tab_bar_state, ctx));
+                            tab_bar.add_child(
+                                Container::new(self.render_tab_in_tab_bar(i, tab_bar_state, ctx))
+                                    .with_margin_right(FLOATING_CHROME_INSET)
+                                    .finish(),
+                            );
                         }
                     }
                 }
@@ -21161,10 +21176,13 @@ impl Workspace {
 
         let left_padding = self.compute_tab_bar_left_padding(ctx);
 
+        let tab_bar = tab_bar.with_cross_axis_alignment(CrossAxisAlignment::Stretch);
         EventHandler::new(
             Container::new(tab_bar.finish())
                 .with_padding_left(left_padding)
                 .with_padding_right(TAB_BAR_PADDING_RIGHT)
+                .with_padding_top(FLOATING_CHROME_INSET)
+                .with_padding_bottom(TAB_FLOATING_VERTICAL_INSET)
                 .finish(),
         )
         .on_right_mouse_down(|ctx, _, position, _| {
@@ -21411,6 +21429,13 @@ impl Workspace {
         appearance: &Appearance,
         ctx: &AppContext,
     ) -> Box<dyn Element> {
+        let vertical_tabs_active =
+            FeatureFlag::VerticalTabs.is_enabled() && *TabSettings::as_ref(ctx).use_vertical_tabs;
+        let tab_bar_height = if vertical_tabs_active {
+            TAB_BAR_HEIGHT
+        } else {
+            TOTAL_TAB_BAR_HEIGHT
+        };
         let bar_contents = ConstrainedBox::new(
             // We can wrap the whole tab bar in the a drop target with the `AfterTabIndex` drop target data since the API for accepting a drop target with nested
             // drop target elements will default to the inner ones (in this case the tabs or the button before the tabs)
@@ -21422,7 +21447,7 @@ impl Workspace {
             )
             .finish(),
         )
-        .with_height(TAB_BAR_HEIGHT)
+        .with_height(tab_bar_height)
         .finish();
 
         let tab_bar_element = Container::new(
@@ -21445,7 +21470,7 @@ impl Workspace {
             WindowFocusDimming::apply_panel_header_dimming(
                 tab_bar_element,
                 self.mouse_states.header_dimming.clone(),
-                TAB_BAR_HEIGHT,
+                tab_bar_height,
                 dimming_color,
                 self.window_id,
                 ctx,
