@@ -22064,9 +22064,6 @@ impl Workspace {
             }
 
             if !is_right_maximized {
-                if prev_panel_added {
-                    main_content.add_child(Self::render_panel_separator(app));
-                }
                 main_content =
                     main_content.with_child(Shrinkable::new(1.0, terminal_content).finish());
                 prev_panel_added = true;
@@ -22700,9 +22697,6 @@ impl Workspace {
             prev_panel_added = false;
         }
 
-        if prev_panel_added {
-            panels_view.add_child(Self::render_panel_separator(app));
-        }
         // Terminal fill lives on each pane card, so this column stays transparent
         // and the workspace chrome shows through (see APP-4328).
         panels_view = panels_view.with_child(Shrinkable::new(1.0, terminal_view).finish());
