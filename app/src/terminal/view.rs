@@ -624,6 +624,14 @@ pub const WARP_PROMPT_HEIGHT_LINES: f32 = 0.9;
 
 const SCROLLBAR_WIDTH: ScrollbarWidth = ScrollbarWidth::Auto;
 
+fn terminal_scrollbar_width(app: &AppContext) -> ScrollbarWidth {
+    if *BlockListSettings::as_ref(app).show_scrollbar.value() {
+        SCROLLBAR_WIDTH
+    } else {
+        ScrollbarWidth::None
+    }
+}
+
 /// Width of the bookmark indicator
 const BOOKMARK_INDICATOR_WIDTH: f32 = 15.;
 /// Offset from the right for the bookmark preview
@@ -4157,7 +4165,8 @@ impl TerminalView {
         ctx.subscribe_to_model(&block_list_settings_handle, |me, _, evt, ctx| match evt {
             BlockListSettingsChangedEvent::ShowJumpToBottomOfBlockButton { .. }
             | BlockListSettingsChangedEvent::SnackbarEnabled { .. }
-            | BlockListSettingsChangedEvent::ShowBlockDividers { .. } => ctx.notify(),
+            | BlockListSettingsChangedEvent::ShowBlockDividers { .. }
+            | BlockListSettingsChangedEvent::ShowScrollbar { .. } => ctx.notify(),
             BlockListSettingsChangedEvent::PreserveInputFocusOnBlockSelection { .. } => {
                 // Fires for every terminal view, so use the focus-gated variant to avoid
                 // stealing focus from another pane or Settings.
@@ -24721,6 +24730,7 @@ impl TerminalView {
             self.horizontal_clipped_scroll_state.clone(),
             required_terminal_width,
             theme,
+            terminal_scrollbar_width(app),
             alt_screen_element,
         );
 
@@ -25051,6 +25061,7 @@ impl TerminalView {
             self.horizontal_clipped_scroll_state.clone(),
             required_terminal_width,
             theme,
+            terminal_scrollbar_width(app),
             element,
         );
 
@@ -25159,7 +25170,7 @@ impl TerminalView {
         let scrollable = Scrollable::vertical(
             self.blocklist_vertical_scroll_state.clone(),
             waterfall_gap_element.finish_scrollable(),
-            SCROLLBAR_WIDTH,
+            terminal_scrollbar_width(app),
             theme.disabled_text_color(theme.background()).into(),
             theme.main_text_color(theme.background()).into(),
             Fill::None,
@@ -28773,13 +28784,14 @@ impl View for TerminalView {
                 && overhanging_block.visible_block_height_px()
                     > *JUMP_TO_BOTTOM_OVERHANG_THRESHOLD_PX
             {
+                let scrollbar_inset = terminal_scrollbar_width(app).as_f32();
                 let positioning = match (input_mode, self.is_input_box_visible(&model, app)) {
                     (InputMode::PinnedToBottom | InputMode::Waterfall, true) => {
                         // In waterfall or pinned to bottom mode, the button is positioned relative to the top right
                         // of the input area
                         OffsetPositioning::offset_from_save_position_element(
                             self.input.as_ref(app).save_position_id(),
-                            vec2f(-10. - SCROLLBAR_WIDTH.as_f32(), -10.),
+                            vec2f(-10. - scrollbar_inset, -10.),
                             PositionedElementOffsetBounds::WindowByPosition,
                             PositionedElementAnchor::TopRight,
                             ChildAnchor::BottomRight,
@@ -28788,7 +28800,7 @@ impl View for TerminalView {
                     // In pinned to top mode or the input is not visible, the button is positioned relative to the bottom right
                     // of the parent element
                     (_, _) => OffsetPositioning::offset_from_parent(
-                        vec2f(-10. - SCROLLBAR_WIDTH.as_f32(), -10.),
+                        vec2f(-10. - scrollbar_inset, -10.),
                         ParentOffsetBounds::ParentByPosition,
                         ParentAnchor::BottomRight,
                         ChildAnchor::BottomRight,
@@ -29470,12 +29482,13 @@ fn maybe_wrap_terminal_element_in_scrollable(
     horizontal_scroll_handle: ClippedScrollStateHandle,
     required_terminal_width: f32,
     theme: &WarpTheme,
+    scrollbar_width: ScrollbarWidth,
     element: impl NewScrollableElement + 'static,
 ) -> Box<dyn Element> {
     let nonactive_thumb_background = theme.disabled_text_color(theme.background()).into();
     let active_thumb_background = theme.main_text_color(theme.background()).into();
     let track_background = Fill::None;
-    let scrollbar_appearance = ScrollableAppearance::new(SCROLLBAR_WIDTH, true);
+    let scrollbar_appearance = ScrollableAppearance::new(scrollbar_width, true);
     match (is_scrollable_vertical, is_scrollable_horizontal) {
         (true, true) => {
             let config = DualAxisConfig::Manual {
