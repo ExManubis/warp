@@ -427,6 +427,11 @@ pub struct ViewportState<'a> {
     /// The size of the terminal input view, presumably from the last layout.
     input_size: Vector2F,
 
+    /// When true, the Warp prompt card is painted over the block list. Follow-bottom
+    /// and short-content alignment then reserve `input_size` so lines rest above the
+    /// card and can still scroll behind it.
+    overlay_input: bool,
+
     /// Autoscroll behavior for rich content blocks.
     rich_block_autoscroll_behavior: AutoscrollBehavior,
 
@@ -458,8 +463,38 @@ impl<'a> ViewportState<'a> {
             visible_items,
             blocklist_element_size,
             input_size,
+            overlay_input: false,
             rich_block_autoscroll_behavior,
             inline_menu_positioner,
+        }
+    }
+
+    pub fn with_overlay_input(mut self, overlay_input: bool) -> Self {
+        self.overlay_input = overlay_input;
+        self
+    }
+
+    pub fn overlay_inset_lines(&self) -> Lines {
+        if self.overlay_input {
+            Pixels::new(self.input_size.y()).to_lines(self.size_info.cell_height_px)
+        } else {
+            Lines::zero()
+        }
+    }
+
+    /// Painted height minus the overlaid card. Follow-bottom and short-content
+    /// alignment use this so output sits above the card unless the user scrolls.
+    fn follow_bottom_height_lines(&self) -> Lines {
+        (self.content_element_height_lines() - self.overlay_inset_lines()).max(Lines::zero())
+    }
+
+    /// Downward shift for short PinnedToBottom content after reserving the card.
+    pub fn short_content_bottom_align_offset_lines(&self) -> Lines {
+        match self.input_mode {
+            InputMode::PinnedToBottom => (self.follow_bottom_height_lines()
+                - self.block_list.block_heights().summary().height)
+                .max(Lines::zero()),
+            InputMode::PinnedToTop | InputMode::Waterfall => Lines::zero(),
         }
     }
 
@@ -598,7 +633,6 @@ impl<'a> ViewportState<'a> {
             let top_item = viewport_iter.next().expect("should be a top item to paint");
             top_item.top_of_current_block
         };
-        let content_element_lines = self.content_element_height_lines();
         let top_offset = self.scroll_top_in_lines();
 
         // Move the grid origin upwards to start at the top of the current block
@@ -606,11 +640,13 @@ impl<'a> ViewportState<'a> {
             -(top_offset - top_of_current_block).to_pixels(self.size_info.cell_height_px());
 
         if matches!(self.input_mode, InputMode::PinnedToBottom) {
-            // Take into account the case where the blocks don't fill up the entire grid
-            if content_element_lines > total_block_height {
-                adjustment += (content_element_lines - total_block_height)
-                    .to_pixels(self.size_info.cell_height_px());
-            }
+            adjustment += self
+                .short_content_bottom_align_offset_lines()
+                .to_pixels(self.size_info.cell_height_px());
+        } else if matches!(self.input_mode, InputMode::PinnedToTop) {
+            adjustment += self
+                .overlay_inset_lines()
+                .to_pixels(self.size_info.cell_height_px());
         }
 
         if self.block_list.active_gap().is_some() && !self.is_input_rendered_at_bottom_of_pane(app)
@@ -1446,7 +1482,7 @@ impl<'a> ViewportState<'a> {
             }
             (_, _) => {
                 let total_block_height = self.block_list.block_heights().summary().height;
-                (total_block_height - self.content_element_height_lines()).max(Lines::zero())
+                (total_block_height - self.follow_bottom_height_lines()).max(Lines::zero())
             }
         }
     }
@@ -1461,13 +1497,12 @@ impl<'a> ViewportState<'a> {
         cursor.seek(&block_index, SeekBias::Right);
 
         let block_list_height = self.block_list.block_heights().summary().height;
-        let num_visible_lines = self.content_element_height_lines();
         match (self.input_mode, self.block_list.active_gap()) {
             (InputMode::PinnedToBottom, _) | (InputMode::Waterfall, None) => {
                 let mut top = cursor.start().height;
-                // Adjust the top for the case where the blocks don't fill the viewport
-                if block_list_height < num_visible_lines {
-                    top += num_visible_lines - block_list_height;
+                let align_height = self.follow_bottom_height_lines();
+                if block_list_height < align_height {
+                    top += align_height - block_list_height;
                 }
                 top.max(Lines::zero())
             }
@@ -1644,17 +1679,18 @@ impl<'a> ViewportState<'a> {
         let relative_coord = snackbar_point.coord - viewport_origin;
         let total_block_height = self.block_list.block_heights().summary().height;
         let size = self.size_info;
-        let content_element_lines = self.content_element_height_lines();
         let mut coord_in_lines = relative_coord
             .y()
             .into_pixels()
             .to_lines(size.cell_height_px());
 
+        let follow_bottom_height = self.follow_bottom_height_lines();
+        let overlay_inset = self.overlay_inset_lines();
         let (is_coord_above_blocks, is_coord_below_blocks) = match self.input_mode {
             InputMode::PinnedToBottom => {
-                let screen_taller_than_blocks = content_element_lines > total_block_height;
+                let screen_taller_than_blocks = follow_bottom_height > total_block_height;
                 let coord_above_bottom_blocks =
-                    coord_in_lines < content_element_lines - total_block_height;
+                    coord_in_lines < follow_bottom_height - total_block_height;
                 (
                     screen_taller_than_blocks && coord_above_bottom_blocks,
                     relative_coord.y() > self.blocklist_element_size.y(),
@@ -1665,10 +1701,10 @@ impl<'a> ViewportState<'a> {
                 relative_coord.y() > self.blocklist_element_size.y(),
             ),
             InputMode::PinnedToTop => {
-                let screen_taller_than_blocks = content_element_lines > total_block_height;
-                let coord_below_top_blocks = coord_in_lines > total_block_height;
+                let screen_taller_than_blocks = follow_bottom_height > total_block_height;
+                let coord_below_top_blocks = coord_in_lines > total_block_height + overlay_inset;
                 (
-                    relative_coord.y() < 0.,
+                    relative_coord.y() < overlay_inset.to_pixels(size.cell_height_px()).as_f32(),
                     screen_taller_than_blocks && coord_below_top_blocks,
                 )
             }
@@ -1715,7 +1751,7 @@ impl<'a> ViewportState<'a> {
             .header_translation_for_coord(size, snackbar_point);
 
         let scroll_top = self.scroll_top_in_lines();
-        let offset = (content_element_lines - total_block_height).max(Lines::zero());
+        let offset = self.short_content_bottom_align_offset_lines();
         let column = ((relative_coord.x() - size.padding_x_px.as_f32()).max(0.)
             / size.cell_width_px().as_f32()) as usize;
         let row = match self.input_mode {
@@ -1781,8 +1817,9 @@ impl<'a> ViewportState<'a> {
                 // This yields 3 + 15 = 18, which is the correct BlockListPoint.
 
                 // We use the inverted_row to identify the block the coord is in.
-                let inverted_row =
-                    (total_block_height - (coord_in_lines + scroll_top)).max(Lines::zero());
+                let inverted_row = (total_block_height
+                    - (coord_in_lines - overlay_inset + scroll_top))
+                    .max(Lines::zero());
                 let mut cursor = self
                     .block_list
                     .block_heights()

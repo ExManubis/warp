@@ -9789,6 +9789,18 @@ impl TerminalView {
             },
             self.inline_menu_positioner.clone(),
         )
+        .with_overlay_input(self.should_apply_overlay_input_inset(app))
+    }
+
+    /// Chrome-only overlay check so `viewport_state` can reserve the card
+    /// without taking the terminal model lock.
+    fn should_apply_overlay_input_inset(&self, app: &AppContext) -> bool {
+        self.input
+            .as_ref(app)
+            .should_show_universal_developer_input(app)
+            && !self.has_active_cli_agent_input_session(app)
+            && !self.agent_view_controller.as_ref(app).is_active()
+            && !self.input.as_ref(app).is_cloud_mode_input_v2_composing(app)
     }
 
     /// Dismisses any open tooltips on the grid, returning whether any were actually closed.
@@ -24437,14 +24449,7 @@ impl TerminalView {
     /// Warp prompt card floats over the block list so gutters show terminal
     /// content instead of a reserved opaque input strip.
     fn should_overlay_frosted_warp_input(&self, model: &TerminalModel, app: &AppContext) -> bool {
-        self.is_input_box_visible(model, app)
-            && self
-                .input
-                .as_ref(app)
-                .should_show_universal_developer_input(app)
-            && !self.has_active_cli_agent_input_session(app)
-            && !self.agent_view_controller.as_ref(app).is_active()
-            && !self.input.as_ref(app).is_cloud_mode_input_v2_composing(app)
+        self.is_input_box_visible(model, app) && self.should_apply_overlay_input_inset(app)
     }
 
     fn render_inline_banners(
@@ -24936,6 +24941,10 @@ impl TerminalView {
             self.inline_menu_positioner.clone(),
             None,
         );
+
+        if self.should_overlay_frosted_warp_input(model, app) {
+            element = element.with_overlay_input(true);
+        }
 
         if should_use_ligature_rendering(app) {
             element = element.with_ligature_rendering();

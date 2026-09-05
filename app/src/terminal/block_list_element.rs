@@ -734,6 +734,9 @@ pub struct BlockListElement {
     /// The last laid out size of the input view.
     input_size_at_last_frame: Vector2F,
 
+    /// When true, the Warp prompt card is painted over this block list.
+    overlay_input: bool,
+
     block_footer_elements: HashMap<BlockIndex, Box<dyn Element>>,
 
     find_model: ModelHandle<TerminalFindModel>,
@@ -970,6 +973,7 @@ impl BlockListElement {
                 .horizontal_clipped_scroll_state,
             ai_render_context: terminal_view_render_context.ai_render_context,
             input_size_at_last_frame,
+            overlay_input: false,
             block_footer_elements: HashMap::new(),
             cursor_hint_text_element,
             cli_subagent_views,
@@ -993,6 +997,11 @@ impl BlockListElement {
 
     pub fn with_hide_cursor_cell(mut self) -> Self {
         self.hide_cursor_cell = true;
+        self
+    }
+
+    pub fn with_overlay_input(mut self, overlay_input: bool) -> Self {
+        self.overlay_input = overlay_input;
         self
     }
 
@@ -1032,6 +1041,7 @@ impl BlockListElement {
             },
             self.inline_menu_positioner.clone(),
         )
+        .with_overlay_input(self.overlay_input)
     }
 
     fn snackbar_header_state(&self) -> MutexGuard<'_, SnackbarHeader> {
@@ -2073,28 +2083,34 @@ impl BlockListElement {
         selection_cursor_render_location: SelectionCursorRenderLocation,
         ctx: &mut PaintContext,
     ) {
-        let total_block_heights = block_list.block_heights().summary().height;
-
         let viewport = self.viewport_state_after_layout(block_list);
         let (start, end) = viewport.selection_as_viewport_points(range);
 
         let cell_height = self.size_info.cell_height_px;
-        let visible_rows = self.size().unwrap().y().into_pixels().to_lines(cell_height);
-        // Offset vertically if the blocks do not take the entire screen, so we render the correct selections.
-        // This offset is only necessary for the MostRecentAtBottom block ordering because
-        // there is no gap at the top in the MostRecentAtTop ordering
+        // Offset to match paint: PinnedToBottom short content sits above the
+        // overlay card; PinnedToTop content starts below it.
         let selection_origin = match self.input_mode {
             InputMode::PinnedToBottom => {
                 origin
                     + vec2f(
                         0.,
-                        (visible_rows - total_block_heights)
-                            .max(Lines::zero())
+                        viewport
+                            .short_content_bottom_align_offset_lines()
                             .to_pixels(cell_height)
                             .as_f32(),
                     )
             }
-            InputMode::Waterfall | InputMode::PinnedToTop => origin,
+            InputMode::PinnedToTop => {
+                origin
+                    + vec2f(
+                        0.,
+                        viewport
+                            .overlay_inset_lines()
+                            .to_pixels(cell_height)
+                            .as_f32(),
+                    )
+            }
+            InputMode::Waterfall => origin,
         };
 
         let rendered_snackbar_selection = self.snackbar_header_state().render_selection(
@@ -3247,6 +3263,7 @@ impl Element for BlockListElement {
                     },
                     self.inline_menu_positioner.clone(),
                 )
+                .with_overlay_input(self.overlay_input)
             };
         }
 
