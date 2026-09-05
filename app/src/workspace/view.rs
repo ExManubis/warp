@@ -23093,6 +23093,12 @@ impl Workspace {
             context.set.insert(flags::SHOW_SCROLLBAR_CONTEXT_FLAG);
         }
 
+        if *block_list_settings.show_block_selection_highlight.value() {
+            context
+                .set
+                .insert(flags::SHOW_BLOCK_SELECTION_HIGHLIGHT_CONTEXT_FLAG);
+        }
+
         if *safe_mode_settings.safe_mode_enabled.value() {
             context.set.insert(flags::SAFE_MODE_FLAG);
         }

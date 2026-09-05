@@ -87,7 +87,7 @@ use crate::terminal::model::terminal_model::BlockIndex;
 use crate::terminal::safe_mode_settings::get_secret_obfuscation_mode;
 use crate::terminal::view::TerminalAction;
 use crate::terminal::warpify::SubshellSource;
-use crate::terminal::{SizeInfo, grid_renderer, should_right_click_paste};
+use crate::terminal::{BlockListSettings, SizeInfo, grid_renderer, should_right_click_paste};
 use crate::themes::theme::{Fill, WarpTheme};
 use crate::ui_components::{self, icons as UIIcon};
 use crate::util::color::Opacity;
@@ -3902,7 +3902,9 @@ impl Element for BlockListElement {
                         start_of_continuous_selected_blocks.contains(block_index);
                     let is_bottom_of_continuous_selection =
                         end_of_continuous_selected_blocks.contains(block_index);
-                    if is_current_block_selected {
+                    let show_block_selection_highlight =
+                        *BlockListSettings::as_ref(app).show_block_selection_highlight;
+                    if is_current_block_selected && show_block_selection_highlight {
                         let border_info = compute_border_info(
                             is_singleton,
                             tail_index,
@@ -3948,7 +3950,7 @@ impl Element for BlockListElement {
 
                     // If this is the top of a continuous selection, there's a top border, so we don't want to draw
                     // the gray border at the top of the block.
-                    if is_top_of_continuous_selection {
+                    if is_top_of_continuous_selection && show_block_selection_highlight {
                         draw_border_above_block = false;
                     }
 

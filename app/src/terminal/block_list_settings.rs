@@ -56,4 +56,14 @@ define_settings_group!(BlockListSettings, settings: [
        toml_path: "appearance.blocks.show_scrollbar",
        description: "Whether to show the terminal scrollbar.",
    }
+   show_block_selection_highlight: ShowBlockSelectionHighlight {
+       type: bool,
+       default: false,
+       supported_platforms: SupportedPlatforms::ALL,
+       sync_to_cloud: SyncToCloud::Globally(RespectUserSyncSetting::Yes),
+       surface: settings::SettingSurfaces::GUI,
+       private: false,
+       toml_path: "appearance.blocks.show_block_selection_highlight",
+       description: "Whether to highlight a terminal block when it is selected.",
+   }
 ]);

@@ -545,6 +545,8 @@ pub mod flags {
     pub const QUIT_WARNING_MODAL: &str = "Quit_Warning_Modal";
     pub const BLOCK_DIVIDERS_CONTEXT_FLAG: &str = "Block_Dividers_Enabled";
     pub const SHOW_SCROLLBAR_CONTEXT_FLAG: &str = "Scrollbar_Enabled";
+    pub const SHOW_BLOCK_SELECTION_HIGHLIGHT_CONTEXT_FLAG: &str =
+        "Block_Selection_Highlight_Enabled";
 
     pub const LOG_OUT_WARNING_MODAL: &str = "Log_Out_Warning_Modal";
     pub const SMART_SELECT_FLAG: &str = "Smart_Select_Enabled";
