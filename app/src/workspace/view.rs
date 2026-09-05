@@ -156,9 +156,9 @@ use super::tab_settings::{
 };
 use super::util::{
     PaneViewLocator, TabMovement, TerminalSessionFallbackBehavior, WelcomeTipsViewState,
-    WorkspaceMouseStates, WorkspaceState,
+    WorkspaceMouseStates, WorkspaceState, workspace_chrome_fill,
 };
-use super::{ActiveSession, TabBarDropTargetData, TabBarLocation, WorkspaceRegistry, util};
+use super::{ActiveSession, TabBarDropTargetData, TabBarLocation, WorkspaceRegistry};
 use crate::ai::active_agent_views_model::ActiveAgentViewsModel;
 #[cfg(all(feature = "local_fs", not(target_family = "wasm")))]
 use crate::ai::agent::CancellationReason;
@@ -21441,6 +21441,7 @@ impl Workspace {
                 })
                 .finish(),
         )
+        .with_background(workspace_chrome_fill())
         .with_border(tab_bar_border)
         .finish();
 
@@ -22685,8 +22686,8 @@ impl Workspace {
         if prev_panel_added {
             panels_view.add_child(Self::render_panel_separator(app));
         }
-        // The outer workspace container in `render` already paints the terminal
-        // background fill, so don't paint it again here (see APP-4328).
+        // Terminal fill lives on each pane card, so this column stays transparent
+        // and the workspace chrome shows through (see APP-4328).
         panels_view = panels_view.with_child(Shrinkable::new(1.0, terminal_view).finish());
         prev_panel_added = true;
 
@@ -26629,9 +26630,7 @@ impl View for Workspace {
             // Hide the vertical tab rail for simplified WASM views (notebooks, shared sessions, etc.)
             let panels_row = self.render_panels(app, Shrinkable::new(1.0, content).finish(), true);
             outer_column.add_child(Shrinkable::new(1.0, panels_row).finish());
-            Container::new(outer_column.finish())
-                .with_background(util::get_terminal_background_fill(self.window_id, app))
-                .finish()
+            Container::new(outer_column.finish()).finish()
         } else {
             let mut outer_column = Flex::column();
             if tab_bar_mode == ShowTabBar::Stacked {
@@ -26640,9 +26639,7 @@ impl View for Workspace {
             let content = self.render_banner_and_active_tab(app, appearance);
             let panels_row = self.render_panels(app, Shrinkable::new(1.0, content).finish(), false);
             outer_column.add_child(Shrinkable::new(1.0, panels_row).finish());
-            Container::new(outer_column.finish())
-                .with_background(util::get_terminal_background_fill(self.window_id, app))
-                .finish()
+            Container::new(outer_column.finish()).finish()
         };
         let mut stack = Stack::new();
 
@@ -27702,33 +27699,24 @@ impl View for Workspace {
             .background_opacity
             .effective_opacity(self.window_id, app);
 
-        match theme.background_image() {
-            Some(img) => {
-                let opacity_ratio = background_opacity as f32 / 100.;
-                stack.add_child(
-                    Shrinkable::new(
-                        1.,
-                        Image::new(img.source(), CacheOption::Original)
-                            .cover()
-                            .with_opacity(opacity_ratio)
-                            .with_corner_radius(window_corner_radius)
-                            .enable_animation_with_start_time(
-                                self.background_image_animation_start_time,
-                            )
-                            .finish(),
-                    )
-                    .finish(),
-                );
-                stack.add_child(workspace.finish());
-            }
-            _ => {
-                stack.add_child(
-                    workspace
-                        .with_background(theme.surface_2().with_opacity(background_opacity))
+        if let Some(img) = theme.background_image() {
+            let opacity_ratio = background_opacity as f32 / 100.;
+            stack.add_child(
+                Shrinkable::new(
+                    1.,
+                    Image::new(img.source(), CacheOption::Original)
+                        .cover()
+                        .with_opacity(opacity_ratio)
+                        .with_corner_radius(window_corner_radius)
+                        .enable_animation_with_start_time(
+                            self.background_image_animation_start_time,
+                        )
                         .finish(),
-                );
-            }
+                )
+                .finish(),
+            );
         }
+        stack.add_child(workspace.with_background(workspace_chrome_fill()).finish());
 
         let input_position_id = self
             .get_active_input_view_handle(app)

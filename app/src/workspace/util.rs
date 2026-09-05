@@ -1,5 +1,7 @@
+use pathfinder_color::ColorU;
 use serde::{Deserialize, Serialize};
-use warpui::elements::MouseStateHandle;
+use warp_core::ui::color::coloru_with_opacity;
+use warpui::elements::{Fill, MouseStateHandle};
 use warpui::{AppContext, EntityId, SingletonEntity, ViewContext, ViewHandle, WindowId};
 
 use super::OneTimeModalModel;
@@ -378,6 +380,26 @@ pub fn get_context_target_terminal_view(
                     })
             })
         })
+}
+
+const WORKSPACE_CHROME_COLOR: ColorU = ColorU {
+    r: 0x1D,
+    g: 0x1D,
+    b: 0x1D,
+    a: 255,
+};
+const WORKSPACE_CHROME_OPACITY: u8 = 99;
+
+pub fn workspace_chrome_fill() -> Fill {
+    coloru_with_opacity(WORKSPACE_CHROME_COLOR, WORKSPACE_CHROME_OPACITY).into()
+}
+
+pub fn get_pane_card_fill(window_id: WindowId, app: &AppContext) -> Fill {
+    let theme = Appearance::as_ref(app).theme();
+    let opacity = WindowSettings::as_ref(app)
+        .background_opacity
+        .effective_opacity(window_id, app);
+    theme.background().with_opacity(opacity).into()
 }
 
 pub fn get_terminal_background_fill(

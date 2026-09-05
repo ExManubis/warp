@@ -9,8 +9,8 @@ pub use header_content::{
 };
 use pathfinder_geometry::rect::RectF;
 use warpui::elements::{
-    Border, ConstrainedBox, Container, DropTarget, DropTargetData, Flex, MainAxisSize,
-    ParentElement, SavePosition, Shrinkable,
+    Border, Clipped, ConstrainedBox, Container, CornerRadius, DropTarget, DropTargetData, Flex,
+    MainAxisSize, ParentElement, Radius, SavePosition, Shrinkable,
 };
 use warpui::keymap::EditableBinding;
 use warpui::presenter::ChildView;
@@ -29,8 +29,12 @@ use crate::pane_group::{Direction, SplitPaneState, TabBarHoverIndex};
 use crate::server::telemetry::SharingDialogSource;
 use crate::settings::{PaneSettings, PaneSettingsChangedEvent};
 use crate::util::bindings::CustomAction;
+use crate::workspace::util::{get_pane_card_fill, workspace_chrome_fill};
 
 const HAS_SHARED_OBJECT_CONTEXT_KEY: &str = "PaneView_HasSharedObject";
+
+pub const PANE_CARD_PADDING: f32 = 6.;
+const PANE_CARD_RADIUS: f32 = 8.;
 
 /// Max width applied to the pane header while the pane renders as a floating drag preview.
 /// During a pane drag the pane is laid out with unbounded constraints; `MainAxisSize::Min`
@@ -416,10 +420,17 @@ impl<P: BackingView> View for PaneView<P> {
         // Add the underlying pane view.
         column.add_child(Shrinkable::new(1., ChildView::new(&active_child).finish()).finish());
 
-        let mut container = Container::new(column.finish());
+        let card = Container::new(Clipped::new(column.finish()).finish())
+            .with_background(get_pane_card_fill(self.header.window_id(app), app))
+            .with_corner_radius(CornerRadius::with_all(Radius::Pixels(PANE_CARD_RADIUS)));
+
+        let mut container = Container::new(card.finish())
+            .with_background(workspace_chrome_fill())
+            .with_uniform_padding(PANE_CARD_PADDING);
         if pane_configuration.show_accent_border {
-            let border = Border::all(2.).with_border_fill(appearance.theme().accent());
-            container = container.with_border(border);
+            container = container.with_foreground_border(
+                Border::all(2.).with_border_fill(appearance.theme().accent()),
+            );
         }
 
         // Dim inactive panes.
