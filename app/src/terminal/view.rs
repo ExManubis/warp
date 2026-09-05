@@ -4167,7 +4167,8 @@ impl TerminalView {
             | BlockListSettingsChangedEvent::SnackbarEnabled { .. }
             | BlockListSettingsChangedEvent::ShowBlockDividers { .. }
             | BlockListSettingsChangedEvent::ShowScrollbar { .. }
-            | BlockListSettingsChangedEvent::ShowBlockSelectionHighlight { .. } => ctx.notify(),
+            | BlockListSettingsChangedEvent::ShowBlockSelectionHighlight { .. }
+            | BlockListSettingsChangedEvent::ShowBlockPrompt { .. } => ctx.notify(),
             BlockListSettingsChangedEvent::PreserveInputFocusOnBlockSelection { .. } => {
                 // Fires for every terminal view, so use the focus-gated variant to avoid
                 // stealing focus from another pane or Settings.
@@ -24345,8 +24346,17 @@ impl TerminalView {
         sessions: &Sessions,
         padding_x: Pixels,
         tool_tip_below_button: bool,
+        show_block_prompt: bool,
         appearance: &Appearance,
     ) -> Box<dyn Element> {
+        if !show_block_prompt {
+            return SavePosition::new(
+                Empty::new().finish(),
+                format!("block_index:{index}").as_str(),
+            )
+            .finish();
+        }
+
         let terminal_theme_prompt: ColorU = appearance
             .theme()
             .sub_text_color(appearance.theme().background())
@@ -24859,6 +24869,7 @@ impl TerminalView {
             enforce_minimum_contrast,
             appearance,
             Box::new(move |range, label_mouse_states, model, app| {
+                let show_block_prompt = *BlockListSettings::as_ref(app).show_block_prompt;
                 range
                     .iter()
                     .enumerate()
@@ -24870,6 +24881,7 @@ impl TerminalView {
                             sessions.as_ref(app),
                             padding_x,
                             i == 0,
+                            show_block_prompt,
                             Appearance::as_ref(app),
                         );
                         // Special-case the last block so there is a reliable way to target it

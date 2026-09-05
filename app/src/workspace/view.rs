@@ -23099,6 +23099,10 @@ impl Workspace {
                 .insert(flags::SHOW_BLOCK_SELECTION_HIGHLIGHT_CONTEXT_FLAG);
         }
 
+        if *block_list_settings.show_block_prompt.value() {
+            context.set.insert(flags::SHOW_BLOCK_PROMPT_CONTEXT_FLAG);
+        }
+
         if *safe_mode_settings.safe_mode_enabled.value() {
             context.set.insert(flags::SAFE_MODE_FLAG);
         }

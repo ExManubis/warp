@@ -73,7 +73,7 @@ use crate::terminal::settings::{
     AltScreenPadding, AltScreenPaddingMode, Spacing, SpacingMode, TerminalSettings,
 };
 use crate::terminal::{
-    BlockListSettings, ShowBlockDividers, ShowBlockSelectionHighlight,
+    BlockListSettings, ShowBlockDividers, ShowBlockPrompt, ShowBlockSelectionHighlight,
     ShowJumpToBottomOfBlockButton, ShowScrollbar, SizeInfo,
 };
 use crate::themes::theme::{self, RespectSystemTheme, SelectedSystemThemes, ThemeKind, WarpTheme};
@@ -224,6 +224,22 @@ pub fn init_actions_from_parent_view<T: Action + Clone>(
         .is_supported_on_current_platform(
             BlockListSettings::as_ref(app)
                 .show_block_selection_highlight
+                .is_supported_on_current_platform(),
+        ),
+    );
+
+    toggle_binding_pairs.push(
+        ToggleSettingActionPair::new(
+            "block prompt",
+            builder(SettingsAction::AppearancePageToggle(
+                AppearancePageAction::ToggleShowBlockPrompt,
+            )),
+            context,
+            flags::SHOW_BLOCK_PROMPT_CONTEXT_FLAG,
+        )
+        .is_supported_on_current_platform(
+            BlockListSettings::as_ref(app)
+                .show_block_prompt
                 .is_supported_on_current_platform(),
         ),
     );
@@ -522,6 +538,7 @@ pub enum AppearancePageAction {
     ToggleShowBlockDividers,
     ToggleShowScrollbar,
     ToggleShowBlockSelectionHighlight,
+    ToggleShowBlockPrompt,
     ToggleCompactMode,
     ToggleCursorBlink,
     ToggleRespectSystemTheme,
@@ -671,6 +688,7 @@ impl TypedActionView for AppearanceSettingsPageView {
             ToggleShowBlockDividers => self.toggle_show_block_dividers(ctx),
             ToggleShowScrollbar => self.toggle_show_scrollbar(ctx),
             ToggleShowBlockSelectionHighlight => self.toggle_show_block_selection_highlight(ctx),
+            ToggleShowBlockPrompt => self.toggle_show_block_prompt(ctx),
             ToggleCompactMode => self.toggle_compact_mode(ctx),
             ToggleCursorBlink => self.toggle_cursor_blink(ctx),
             ToggleOpenWindowsAtCustomSize => self.toggle_open_windows_at_custom_size(ctx),
@@ -1544,6 +1562,7 @@ impl AppearanceSettingsPageView {
             Box::new(JumpToBottomOfBlockWidget::default()),
             Box::new(ShowScrollbarWidget::default()),
             Box::new(ShowBlockSelectionHighlightWidget::default()),
+            Box::new(ShowBlockPromptWidget::default()),
         ];
         if FeatureFlag::MinimalistUI.is_enabled() {
             block_settings_widgets.push(Box::new(ShowBlockDividersWidget::default()));
@@ -2393,6 +2412,18 @@ impl AppearanceSettingsPageView {
             report_if_error!(
                 block_list_settings
                     .show_block_selection_highlight
+                    .set_value(new_value, ctx)
+            );
+        });
+    }
+
+    pub fn toggle_show_block_prompt(&mut self, ctx: &mut ViewContext<Self>) {
+        let block_list_settings = BlockListSettings::handle(ctx);
+        let new_value = { !*block_list_settings.as_ref(ctx).show_block_prompt.value() };
+        ctx.update_model(&block_list_settings, move |block_list_settings, ctx| {
+            report_if_error!(
+                block_list_settings
+                    .show_block_prompt
                     .set_value(new_value, ctx)
             );
         });
@@ -4333,6 +4364,50 @@ impl SettingsWidget for ShowBlockSelectionHighlightWidget {
 }
 
 #[derive(Default)]
+struct ShowBlockPromptWidget {
+    switch_state: SwitchStateHandle,
+}
+
+impl SettingsWidget for ShowBlockPromptWidget {
+    type View = AppearanceSettingsPageView;
+
+    fn search_terms(&self) -> &str {
+        "show block prompt command duration timestamp elapsed time"
+    }
+
+    fn render(
+        &self,
+        view: &Self::View,
+        appearance: &Appearance,
+        app: &AppContext,
+    ) -> Box<dyn Element> {
+        let enabled = BlockListSettings::as_ref(app).show_block_prompt.value();
+        render_body_item::<AppearancePageAction>(
+            "Show block prompt".into(),
+            None,
+            LocalOnlyIconState::for_setting(
+                ShowBlockPrompt::storage_key(),
+                ShowBlockPrompt::sync_to_cloud(),
+                &mut view.local_only_icon_tooltip_states.borrow_mut(),
+                app,
+            ),
+            ToggleState::Enabled,
+            appearance,
+            appearance
+                .ui_builder()
+                .switch(self.switch_state.clone())
+                .check(*enabled)
+                .build()
+                .on_click(move |ctx, _, _| {
+                    ctx.dispatch_typed_action(AppearancePageAction::ToggleShowBlockPrompt);
+                })
+                .finish(),
+            None,
+        )
+    }
+}
+
+#[derive(Default)]
 struct AIFontWidget {
     checkbox_state: MouseStateHandle,
 }
@@ -5892,6 +5967,41 @@ fn show_block_selection_highlight_search_isolates_widget() {
                 page.update_filter("block selection highlight", ctx)
                     .is_truthy()
             );
+            let FilteredPageType::Categorized { categories, .. } = page.get_filtered() else {
+                panic!("expected categorized page");
+            };
+            assert_eq!(categories.len(), 1);
+            assert_eq!(categories[0].widgets.len(), 1);
+
+            page.update_filter("", ctx);
+            let FilteredPageType::Categorized { categories, .. } = page.get_filtered() else {
+                panic!("expected categorized page");
+            };
+            assert_eq!(categories[0].widgets.len(), 2);
+        });
+    });
+}
+
+#[cfg(test)]
+#[test]
+fn show_block_prompt_search_isolates_widget() {
+    use warpui::App;
+
+    use super::settings_page::FilteredPageType;
+
+    App::test((), |mut app| async move {
+        app.update(|ctx| {
+            let mut page = PageType::new_categorized(
+                vec![Category::new(
+                    "Blocks",
+                    vec![
+                        Box::new(ShowBlockSelectionHighlightWidget::default()),
+                        Box::new(ShowBlockPromptWidget::default()),
+                    ],
+                )],
+                None,
+            );
+            assert!(page.update_filter("block prompt", ctx).is_truthy());
             let FilteredPageType::Categorized { categories, .. } = page.get_filtered() else {
                 panic!("expected categorized page");
             };
