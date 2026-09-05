@@ -24434,6 +24434,19 @@ impl TerminalView {
             .finish()
     }
 
+    /// Warp prompt card floats over the block list so gutters show terminal
+    /// content instead of a reserved opaque input strip.
+    fn should_overlay_frosted_warp_input(&self, model: &TerminalModel, app: &AppContext) -> bool {
+        self.is_input_box_visible(model, app)
+            && self
+                .input
+                .as_ref(app)
+                .should_show_universal_developer_input(app)
+            && !self.has_active_cli_agent_input_session(app)
+            && !self.agent_view_controller.as_ref(app).is_active()
+            && !self.input.as_ref(app).is_cloud_mode_input_v2_composing(app)
+    }
+
     fn render_inline_banners(
         &self,
         appearance: &Appearance,
@@ -28445,19 +28458,42 @@ impl View for TerminalView {
                     }
 
                     let input_box_visible = self.is_input_box_visible(&model, app);
-                    if input_box_visible {
+                    let overlay_warp_input =
+                        input_box_visible && self.should_overlay_frosted_warp_input(&model, app);
+                    if input_box_visible && !overlay_warp_input {
                         column.add_child(self.render_input());
-                    } else if self.should_render_legacy_ambient_agent_loading_footer(&model, app) {
+                    } else if !input_box_visible
+                        && self.should_render_legacy_ambient_agent_loading_footer(&model, app)
+                    {
                         column.add_child(ambient_agent::render_loading_footer(appearance));
-                    } else if self.show_remote_server_loading_footer(&model, app) {
+                    } else if !input_box_visible
+                        && self.show_remote_server_loading_footer(&model, app)
+                    {
                         column.add_child(
                             self.render_remote_server_loading_footer(&model, appearance, app),
                         );
                     }
 
-                    let stack = Stack::new()
+                    let mut stack = Stack::new()
                         .with_constrain_absolute_children()
                         .with_child(Clipped::new(column.finish()).finish());
+                    if overlay_warp_input {
+                        let (parent_anchor, child_anchor) = match input_mode {
+                            InputMode::PinnedToTop => (ParentAnchor::TopLeft, ChildAnchor::TopLeft),
+                            InputMode::PinnedToBottom | InputMode::Waterfall => {
+                                (ParentAnchor::BottomLeft, ChildAnchor::BottomLeft)
+                            }
+                        };
+                        stack.add_positioned_child(
+                            self.render_input(),
+                            OffsetPositioning::offset_from_parent(
+                                vec2f(0., 0.),
+                                ParentOffsetBounds::ParentBySize,
+                                parent_anchor,
+                                child_anchor,
+                            ),
+                        );
+                    }
                     if matches!(input_mode, InputMode::Waterfall) && !is_alt_screen_active {
                         self.render_waterfall_mode_background(&model, stack, app)
                     } else {
