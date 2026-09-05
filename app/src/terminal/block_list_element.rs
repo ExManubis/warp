@@ -4094,7 +4094,6 @@ impl Element for BlockListElement {
                     );
 
                     ctx.scene.start_layer(ClipBounds::ActiveLayer);
-                    let block_is_bookmarked = self.bookmark_elements.contains_key(block_index);
                     let offset = 136.; // 4 icons of 26px width + 4px padding between icons x3 + 4px left padding + 4 px right padding + 4px for selected block border + 8px scrollbar
 
                     let block_menu_items_start_origin = header_grid_origin
@@ -4128,6 +4127,10 @@ impl Element for BlockListElement {
                     // we want to detect that it will overlap and draw a background behind
                     // the buttons to occlude the prompt text behind it.
                     let is_block_hovered = self.hovered_block_index == Some(*block_index);
+                    let has_visible_hover_buttons = is_block_hovered
+                        && (self.overflow_menu_button.is_some()
+                            || self.ask_ai_assistant_button.is_some()
+                            || self.save_as_workflow_button.is_some());
 
                     let block_has_active_filter_icon = self
                         .filtered_blocks
@@ -4135,7 +4138,7 @@ impl Element for BlockListElement {
                         .is_some_and(|filtered_blocks| filtered_blocks.contains(block_index))
                         || self.active_filter_editor_block_index == Some(*block_index);
                     let show_toolbelt_background =
-                        is_block_hovered || block_has_active_filter_icon || block_is_bookmarked;
+                        has_visible_hover_buttons || block_has_active_filter_icon;
                     if show_toolbelt_background {
                         let prompt_max_x = match self.label_elements.get_mut(block_index) {
                             // If using the default prompt, use the "label" element's
@@ -4161,7 +4164,7 @@ impl Element for BlockListElement {
                         // it is a background block (output grid could contain long strings overlapping with the toolbelt area).
                         let display_rprompt = block.should_display_rprompt(&size)
                             && !self.label_elements.contains_key(block_index);
-                        if is_block_hovered
+                        if has_visible_hover_buttons
                             && (prompt_max_x > block_menu_items_start_origin.x()
                                 || display_rprompt
                                 || block.is_background())
