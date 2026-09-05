@@ -2034,9 +2034,25 @@ impl<'a> TabComponent<'a> {
             .finish()
         };
 
+        // Parent the close overlay at pill height. A title-sized Stack is
+        // shorter than the 20px button, so ParentByPosition would clamp it off
+        // the vertical center.
+        let wrap_tab_content = |content: Box<dyn Element>| -> Box<dyn Element> {
+            if self.floating_horizontal {
+                Flex::column()
+                    .with_main_axis_size(MainAxisSize::Max)
+                    .with_main_axis_alignment(MainAxisAlignment::Center)
+                    .with_child(content)
+                    .finish()
+            } else {
+                content
+            }
+        };
+
         let build_full_stack = |is_narrow: bool| {
             let reserve_pin_space = self.show_pin_indicator() && !is_narrow;
-            let mut full_stack = Stack::new().with_child(build_full_content(reserve_pin_space));
+            let mut full_stack =
+                Stack::new().with_child(wrap_tab_content(build_full_content(reserve_pin_space)));
             full_stack.add_positioned_child(
                 build_close_button_overlay(is_narrow, is_hovered),
                 OffsetPositioning::offset_from_parent(
@@ -2049,7 +2065,7 @@ impl<'a> TabComponent<'a> {
             full_stack.finish()
         };
 
-        let mut compact_stack = Stack::new().with_child(compact_tab_content);
+        let mut compact_stack = Stack::new().with_child(wrap_tab_content(compact_tab_content));
         // Only show the close button on the active tab for narrow width
         // to prevent accidental clicks
         if self.is_active_tab() {
@@ -2122,16 +2138,10 @@ impl<'a> TabComponent<'a> {
         }
 
         let mut tab = if self.floating_horizontal {
-            Container::new(
-                Flex::column()
-                    .with_main_axis_size(MainAxisSize::Max)
-                    .with_main_axis_alignment(MainAxisAlignment::Center)
-                    .with_child(stack)
-                    .finish(),
-            )
-            .with_background(background_color)
-            .with_corner_radius(CornerRadius::with_all(Radius::Pixels(FLOATING_CARD_RADIUS)))
-            .with_border(metallic_border())
+            Container::new(stack)
+                .with_background(background_color)
+                .with_corner_radius(CornerRadius::with_all(Radius::Pixels(FLOATING_CARD_RADIUS)))
+                .with_border(metallic_border())
         } else {
             let mut tab = Container::new(stack)
                 .with_vertical_padding(2.)
