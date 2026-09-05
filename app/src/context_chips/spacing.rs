@@ -24,3 +24,6 @@ pub const WARP_PROMPT_CARD_MARGIN: f32 = 8.0;
 pub const WARP_PROMPT_CARD_RADIUS: f32 = 8.0;
 /// Symmetric horizontal padding inside the Warp prompt card
 pub const WARP_PROMPT_CARD_INNER_PADDING: f32 = 12.0;
+/// Theme-background veil over the terminal (0–100). High enough to read as a
+/// panel, low enough that scrollback shows through.
+pub const WARP_PROMPT_CARD_VEIL_OPACITY: u8 = 55;

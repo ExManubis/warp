@@ -176,7 +176,11 @@ pub(super) fn wrap_warp_prompt_card(
         .with_corner_radius(CornerRadius::with_all(Radius::Pixels(
             spacing::WARP_PROMPT_CARD_RADIUS,
         )))
-        .with_background(theme.surface_2())
+        .with_background(
+            theme
+                .surface_2()
+                .with_opacity(spacing::WARP_PROMPT_CARD_VEIL_OPACITY),
+        )
         .with_border(Border::all(1.).with_border_fill(theme.outline()))
         .with_drop_shadow(DropShadow::default())
         .finish()
