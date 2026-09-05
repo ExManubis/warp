@@ -22066,7 +22066,7 @@ impl Workspace {
             if !is_right_maximized {
                 main_content =
                     main_content.with_child(Shrinkable::new(1.0, terminal_content).finish());
-                prev_panel_added = true;
+                prev_panel_added = false;
             }
 
             for item in config.right_items() {
@@ -22700,7 +22700,7 @@ impl Workspace {
         // Terminal fill lives on each pane card, so this column stays transparent
         // and the workspace chrome shows through (see APP-4328).
         panels_view = panels_view.with_child(Shrinkable::new(1.0, terminal_view).finish());
-        prev_panel_added = true;
+        prev_panel_added = false;
 
         if vertical_tabs_active {
             let config = TabSettings::as_ref(app)
