@@ -52,7 +52,6 @@ use autoupdate::AutoupdateStage;
 #[cfg(target_os = "macos")]
 use command::blocking::Command;
 use futures::Future;
-use instant::Instant;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 pub(crate) use onboarding::OnboardingTutorial;
@@ -91,10 +90,10 @@ use warpui::clipboard::ClipboardContent;
 #[cfg(target_family = "wasm")]
 use warpui::elements::Percentage;
 use warpui::elements::{
-    Align, Border, CacheOption, ChildAnchor, ChildView, Clipped, ConstrainedBox, Container,
+    Align, Border, ChildAnchor, ChildView, Clipped, ConstrainedBox, Container,
     CornerRadius, CrossAxisAlignment, Dismiss, DispatchEventResult, DragAxis, Draggable,
     DraggableState, DropTarget, Element, Empty, EventHandler, Expanded, Fill as ElementFill, Flex,
-    Highlight, Hoverable, Icon as WarpUiIcon, Image, MainAxisAlignment, MainAxisSize,
+    Highlight, Hoverable, Icon as WarpUiIcon, MainAxisAlignment, MainAxisSize,
     MouseInBehavior, MouseStateHandle, OffsetPositioning, ParentAnchor, ParentElement,
     ParentOffsetBounds, PositionedElementAnchor, PositionedElementOffsetBounds, Radius, Rect,
     SavePosition, Shrinkable, SizeConstraintCondition, SizeConstraintSwitch, Stack, Text,
@@ -155,10 +154,11 @@ use super::tab_settings::{
     VerticalTabsDisplayGranularity, WorkspaceDecorationVisibility,
 };
 use super::util::{
-    PaneViewLocator, TabMovement, TerminalSessionFallbackBehavior, WelcomeTipsViewState,
-    WorkspaceMouseStates, WorkspaceState,
+    FLOATING_CHROME_INSET, PaneViewLocator, TAB_FLOATING_VERTICAL_INSET, TabMovement,
+    TerminalSessionFallbackBehavior, WelcomeTipsViewState, WorkspaceMouseStates, WorkspaceState,
+    workspace_chrome_fill,
 };
-use super::{ActiveSession, TabBarDropTargetData, TabBarLocation, WorkspaceRegistry, util};
+use super::{ActiveSession, TabBarDropTargetData, TabBarLocation, WorkspaceRegistry};
 use crate::ai::active_agent_views_model::ActiveAgentViewsModel;
 #[cfg(all(feature = "local_fs", not(target_family = "wasm")))]
 use crate::ai::agent::CancellationReason;
@@ -365,10 +365,10 @@ use crate::settings_view::{SettingsSection, SettingsView, SettingsViewEvent, fla
 use crate::shell_indicator::ShellIndicatorType;
 use crate::tab::{
     COMPACT_TAB_WIDTH_THRESHOLD, ColorPickerTarget, MOVE_TO_GROUP_LABEL, NewSessionMenuItem,
-    PaneNameMenuTarget, SelectedTabColor, TAB_BAR_BORDER_HEIGHT, TAB_INDICATOR_HEIGHT,
-    TAB_PIN_INDICATOR_ICON_SIZE, TAB_PIN_VANISH_THRESHOLD, TabBarState, TabComponent, TabData,
-    TabShortcutModifierState, TabTelemetryAction, color_picker_menu_items, next_tab_color,
-    tab_position_id, uses_vertical_tabs,
+    PaneNameMenuTarget, SelectedTabColor, TAB_INDICATOR_HEIGHT, TAB_PIN_INDICATOR_ICON_SIZE,
+    TAB_PIN_VANISH_THRESHOLD, TabBarState, TabComponent, TabData, TabShortcutModifierState,
+    TabTelemetryAction, color_picker_menu_items, next_tab_color, tab_position_id,
+    uses_vertical_tabs,
 };
 use crate::tab_configs::action_sidecar::SidecarItemKind;
 use crate::tab_configs::remove_confirmation_dialog::{
@@ -577,8 +577,8 @@ const TAB_BAR_PADDING_RIGHT: f32 = 8.;
 const TITLE_BAR_SEARCH_BAR_MAX_WIDTH: f32 = 320.;
 const TITLE_BAR_SEARCH_BAR_SLOT_PADDING: f32 = 8.;
 
-// The total height taken up by the tab bar, including its bottom border.
-pub const TOTAL_TAB_BAR_HEIGHT: f32 = TAB_BAR_HEIGHT + TAB_BAR_BORDER_HEIGHT;
+pub const TOTAL_TAB_BAR_HEIGHT: f32 =
+    TAB_BAR_HEIGHT + FLOATING_CHROME_INSET + TAB_FLOATING_VERTICAL_INSET;
 
 const TAB_BAR_ICON_PADDING: f32 = 4.;
 
@@ -1069,7 +1069,6 @@ pub struct Workspace {
     import_modal: ViewHandle<ImportModal>,
     theme_chooser_view: ViewHandle<ThemeChooser>,
     previous_theme: Option<ThemeKind>,
-    background_image_animation_start_time: Instant,
     reward_modal: ViewHandle<Modal<RewardView>>,
     reward_modal_pending: Option<RewardKind>,
     pub(crate) current_workspace_state: WorkspaceState,
@@ -3441,7 +3440,6 @@ impl Workspace {
             ctrl_tab_palette,
             mouse_states: Default::default(),
             previous_theme: None,
-            background_image_animation_start_time: Instant::now(),
             settings_pane,
             theme_chooser_view,
             reward_modal,
@@ -14375,7 +14373,12 @@ impl Workspace {
     /// Updates the titlebar height to match the scaled tab bar height.
     pub fn update_titlebar_height(&self, ctx: &mut ViewContext<Self>) {
         let zoom_factor = WindowSettings::as_ref(ctx).zoom_level.as_zoom_factor();
-        let scaled_tab_bar_height = (TOTAL_TAB_BAR_HEIGHT * zoom_factor) as f64;
+        let tab_bar_height = if uses_vertical_tabs(ctx) {
+            TAB_BAR_HEIGHT
+        } else {
+            TOTAL_TAB_BAR_HEIGHT
+        };
+        let scaled_tab_bar_height = (tab_bar_height * zoom_factor) as f64;
 
         if let Some(platform_window) = ctx.windows().platform_window(ctx.window_id()) {
             platform_window
@@ -21097,15 +21100,19 @@ impl Workspace {
                         }
                         // Filtered above; the group must exist in `tab_groups`.
                         let group = self.tab_groups[group_id].clone();
-                        tab_bar.add_child(self.render_horizontal_tab_group(
-                            &group,
-                            *first_index,
-                            *run_len,
-                            tab_bar_state,
-                            *first_index == 0,
-                            appearance,
-                            ctx,
-                        ));
+                        tab_bar.add_child(
+                            Container::new(self.render_horizontal_tab_group(
+                                &group,
+                                *first_index,
+                                *run_len,
+                                tab_bar_state,
+                                *first_index == 0,
+                                appearance,
+                                ctx,
+                            ))
+                            .with_margin_right(FLOATING_CHROME_INSET)
+                            .finish(),
+                        );
                     }
                     TabBarSlot::Single { index } => {
                         let i = *index;
@@ -21127,7 +21134,11 @@ impl Workspace {
                                 .finish(),
                             );
                         } else {
-                            tab_bar.add_child(self.render_tab_in_tab_bar(i, tab_bar_state, ctx));
+                            tab_bar.add_child(
+                                Container::new(self.render_tab_in_tab_bar(i, tab_bar_state, ctx))
+                                    .with_margin_right(FLOATING_CHROME_INSET)
+                                    .finish(),
+                            );
                         }
                     }
                 }
@@ -21162,10 +21173,13 @@ impl Workspace {
 
         let left_padding = self.compute_tab_bar_left_padding(ctx);
 
+        let tab_bar = tab_bar.with_cross_axis_alignment(CrossAxisAlignment::Stretch);
         EventHandler::new(
             Container::new(tab_bar.finish())
                 .with_padding_left(left_padding)
                 .with_padding_right(TAB_BAR_PADDING_RIGHT)
+                .with_padding_top(FLOATING_CHROME_INSET)
+                .with_padding_bottom(TAB_FLOATING_VERTICAL_INSET)
                 .finish(),
         )
         .on_right_mouse_down(|ctx, _, position, _| {
@@ -21412,6 +21426,13 @@ impl Workspace {
         appearance: &Appearance,
         ctx: &AppContext,
     ) -> Box<dyn Element> {
+        let vertical_tabs_active =
+            FeatureFlag::VerticalTabs.is_enabled() && *TabSettings::as_ref(ctx).use_vertical_tabs;
+        let tab_bar_height = if vertical_tabs_active {
+            TAB_BAR_HEIGHT
+        } else {
+            TOTAL_TAB_BAR_HEIGHT
+        };
         let bar_contents = ConstrainedBox::new(
             // We can wrap the whole tab bar in the a drop target with the `AfterTabIndex` drop target data since the API for accepting a drop target with nested
             // drop target elements will default to the inner ones (in this case the tabs or the button before the tabs)
@@ -21423,11 +21444,8 @@ impl Workspace {
             )
             .finish(),
         )
-        .with_height(TAB_BAR_HEIGHT)
+        .with_height(tab_bar_height)
         .finish();
-
-        let tab_bar_border =
-            Border::bottom(TAB_BAR_BORDER_HEIGHT).with_border_fill(appearance.theme().outline());
 
         let tab_bar_element = Container::new(
             EventHandler::new(Clipped::new(self.render_tab_bar_hoverable(bar_contents)).finish())
@@ -21441,7 +21459,7 @@ impl Workspace {
                 })
                 .finish(),
         )
-        .with_border(tab_bar_border)
+        .with_background(workspace_chrome_fill())
         .finish();
 
         let dimming_color = appearance.theme().background().into();
@@ -21449,7 +21467,7 @@ impl Workspace {
             WindowFocusDimming::apply_panel_header_dimming(
                 tab_bar_element,
                 self.mouse_states.header_dimming.clone(),
-                TAB_BAR_HEIGHT,
+                tab_bar_height,
                 dimming_color,
                 self.window_id,
                 ctx,
@@ -22046,12 +22064,9 @@ impl Workspace {
             }
 
             if !is_right_maximized {
-                if prev_panel_added {
-                    main_content.add_child(Self::render_panel_separator(app));
-                }
                 main_content =
                     main_content.with_child(Shrinkable::new(1.0, terminal_content).finish());
-                prev_panel_added = true;
+                prev_panel_added = false;
             }
 
             for item in config.right_items() {
@@ -22682,13 +22697,10 @@ impl Workspace {
             prev_panel_added = false;
         }
 
-        if prev_panel_added {
-            panels_view.add_child(Self::render_panel_separator(app));
-        }
-        // The outer workspace container in `render` already paints the terminal
-        // background fill, so don't paint it again here (see APP-4328).
+        // Terminal fill lives on each pane card, so this column stays transparent
+        // and the workspace chrome shows through (see APP-4328).
         panels_view = panels_view.with_child(Shrinkable::new(1.0, terminal_view).finish());
-        prev_panel_added = true;
+        prev_panel_added = false;
 
         if vertical_tabs_active {
             let config = TabSettings::as_ref(app)
@@ -23087,6 +23099,20 @@ impl Workspace {
 
         if *block_list_settings.show_block_dividers.value() {
             context.set.insert(flags::BLOCK_DIVIDERS_CONTEXT_FLAG);
+        }
+
+        if *block_list_settings.show_scrollbar.value() {
+            context.set.insert(flags::SHOW_SCROLLBAR_CONTEXT_FLAG);
+        }
+
+        if *block_list_settings.show_block_selection_highlight.value() {
+            context
+                .set
+                .insert(flags::SHOW_BLOCK_SELECTION_HIGHLIGHT_CONTEXT_FLAG);
+        }
+
+        if *block_list_settings.show_block_prompt.value() {
+            context.set.insert(flags::SHOW_BLOCK_PROMPT_CONTEXT_FLAG);
         }
 
         if *safe_mode_settings.safe_mode_enabled.value() {
@@ -26615,9 +26641,7 @@ impl View for Workspace {
             // Hide the vertical tab rail for simplified WASM views (notebooks, shared sessions, etc.)
             let panels_row = self.render_panels(app, Shrinkable::new(1.0, content).finish(), true);
             outer_column.add_child(Shrinkable::new(1.0, panels_row).finish());
-            Container::new(outer_column.finish())
-                .with_background(util::get_terminal_background_fill(self.window_id, app))
-                .finish()
+            Container::new(outer_column.finish()).finish()
         } else {
             let mut outer_column = Flex::column();
             if tab_bar_mode == ShowTabBar::Stacked {
@@ -26626,9 +26650,7 @@ impl View for Workspace {
             let content = self.render_banner_and_active_tab(app, appearance);
             let panels_row = self.render_panels(app, Shrinkable::new(1.0, content).finish(), false);
             outer_column.add_child(Shrinkable::new(1.0, panels_row).finish());
-            Container::new(outer_column.finish())
-                .with_background(util::get_terminal_background_fill(self.window_id, app))
-                .finish()
+            Container::new(outer_column.finish()).finish()
         };
         let mut stack = Stack::new();
 
@@ -27682,39 +27704,7 @@ impl View for Workspace {
         let workspace = Container::new(stack.finish()).with_corner_radius(window_corner_radius);
 
         let mut stack = Stack::new();
-        let theme = appearance.theme();
-        let window_settings = WindowSettings::as_ref(app);
-        let background_opacity = window_settings
-            .background_opacity
-            .effective_opacity(self.window_id, app);
-
-        match theme.background_image() {
-            Some(img) => {
-                let opacity_ratio = background_opacity as f32 / 100.;
-                stack.add_child(
-                    Shrinkable::new(
-                        1.,
-                        Image::new(img.source(), CacheOption::Original)
-                            .cover()
-                            .with_opacity(opacity_ratio)
-                            .with_corner_radius(window_corner_radius)
-                            .enable_animation_with_start_time(
-                                self.background_image_animation_start_time,
-                            )
-                            .finish(),
-                    )
-                    .finish(),
-                );
-                stack.add_child(workspace.finish());
-            }
-            _ => {
-                stack.add_child(
-                    workspace
-                        .with_background(theme.surface_2().with_opacity(background_opacity))
-                        .finish(),
-                );
-            }
-        }
+        stack.add_child(workspace.with_background(workspace_chrome_fill()).finish());
 
         let input_position_id = self
             .get_active_input_view_handle(app)

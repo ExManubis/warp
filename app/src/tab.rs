@@ -14,9 +14,9 @@ use warpui::r#async::{SpawnedFutureHandle, Timer};
 use warpui::elements::{
     Align, Border, ChildAnchor, Clipped, ConstrainedBox, Container, CornerRadius,
     CrossAxisAlignment, DragAxis, Draggable, DraggableState, DropTarget, Element, Empty, Fill,
-    Flex, Hoverable, MainAxisAlignment, MainAxisSize, MouseStateHandle, OffsetPositioning, Padding,
-    ParentAnchor, ParentElement, ParentOffsetBounds, PositionedElementAnchor,
-    PositionedElementOffsetBounds, Radius, Rect, SavePosition, Shrinkable, SizeConstraintCondition,
+    Flex, Hoverable, MainAxisAlignment, MainAxisSize, MouseStateHandle, OffsetPositioning,
+    ParentAnchor, ParentElement, ParentOffsetBounds, Radius, Rect, SavePosition, Shrinkable,
+    SizeConstraintCondition,
     SizeConstraintSwitch, Stack, Text,
 };
 use warpui::fonts::Weight;
@@ -49,13 +49,13 @@ use crate::ui_components::color_dot::{TAB_COLOR_OPTIONS, render_color_dot};
 use crate::ui_components::icons::{ICON_DIMENSIONS, Icon};
 use crate::util::bindings::{keybinding_name_to_display_string, keybinding_name_to_keystroke};
 use crate::util::color::{Opacity, coloru_with_opacity};
-use crate::util::truncation::truncate_from_end;
 use crate::window_settings::WindowSettings;
 use crate::workspace::sync_inputs::SyncedInputState;
 use crate::workspace::tab_group::{TabGroup, TabGroupId};
 use crate::workspace::tab_settings::{
     TabCloseButtonPosition, TabSettings, VerticalTabsDisplayGranularity,
 };
+use crate::workspace::util::{FLOATING_CARD_RADIUS, floating_tab_fill, metallic_border};
 use crate::workspace::{
     PaneViewLocator, TabBarDropTargetData, TabBarLocation, TabContextMenuAnchor, WorkspaceAction,
 };
@@ -260,7 +260,6 @@ const WARP_2_TAB_COLOR_OPACITY: Opacity = 25;
 const WARP_2_HOVERED_TAB_COLOR_OPACITY: Opacity = 50;
 const TAB_CLOSE_BUTTON_OPACITY: Opacity = 60;
 const TAB_CLOSE_BUTTON_WIDTH: f32 = 20.0;
-const MAX_TOOLTIP_LENGTH: usize = 80;
 pub(crate) const TAB_PIN_INDICATOR_ICON_SIZE: f32 = 16.0;
 
 /// Color of the synchronized-inputs indicator, shared by the horizontal tab bar
@@ -354,7 +353,6 @@ pub struct TabData {
     pub pane_group: ViewHandle<PaneGroup>,
     pub tab_mouse_state: MouseStateHandle,
     pub close_mouse_state: MouseStateHandle,
-    pub tooltip_mouse_state: MouseStateHandle,
     pub draggable_state: DraggableState,
     /// Color derived from the directory→color mapping (set automatically).
     pub default_directory_color: Option<AnsiColorIdentifier>,
@@ -381,7 +379,6 @@ impl TabData {
             pane_group,
             tab_mouse_state: Default::default(),
             close_mouse_state: Default::default(),
-            tooltip_mouse_state: Default::default(),
             draggable_state: Default::default(),
             default_directory_color: None,
             selected_color: SelectedTabColor::Unset,
@@ -1072,9 +1069,6 @@ pub struct TabComponent<'a> {
     indicator: Indicator,
     close_button_position: TabCloseButtonPosition,
     appearance: &'a Appearance,
-    tooltip_message: Option<String>,
-    tooltip_directory: Option<String>,
-    tooltip_git_branch: Option<String>,
     is_drag_target: bool,
     background_opacity: u8,
     /// Set to `true` when this `TabComponent` is being rendered inside the
@@ -1098,6 +1092,7 @@ pub struct TabComponent<'a> {
     /// (multi-tab menu vs single-tab menu).
     is_in_multi_tab_selection: bool,
     shortcut_hint_label: Option<String>,
+    floating_horizontal: bool,
 }
 
 /// Structure that holds TabComponent styles.
@@ -1230,9 +1225,6 @@ impl<'a> TabComponent<'a> {
             Indicator::None
         };
 
-        let tooltip_message = Self::get_tooltip_message(&indicator, tab, ctx);
-        let tooltip_directory = Self::get_tooltip_directory(&indicator, tab, ctx);
-        let tooltip_git_branch = Self::get_tooltip_git_branch(&indicator, tab, ctx);
         let window_id = tab.pane_group.window_id(ctx);
         let background_opacity = WindowSettings::as_ref(ctx)
             .background_opacity
@@ -1256,9 +1248,6 @@ impl<'a> TabComponent<'a> {
             indicator,
             close_button_position,
             appearance,
-            tooltip_message,
-            tooltip_directory,
-            tooltip_git_branch,
             is_drag_target,
             background_opacity,
             for_drag_ghost: false,
@@ -1267,6 +1256,7 @@ impl<'a> TabComponent<'a> {
             locator,
             is_in_multi_tab_selection: false,
             shortcut_hint_label,
+            floating_horizontal: !uses_vertical_tabs(ctx),
         }
     }
 
@@ -1356,114 +1346,8 @@ impl<'a> TabComponent<'a> {
         Self::is_agent_task_indicator(&self.indicator)
     }
 
-    /// Get the tooltip message for tabs - handles both agent tasks and regular tab titles
-    fn get_tooltip_message(
-        indicator: &Indicator,
-        tab: &TabData,
-        ctx: &AppContext,
-    ) -> Option<String> {
-        if Self::is_agent_task_indicator(indicator) {
-            return Self::get_agent_task_tooltip_message(tab, ctx);
-        }
-
-        // If we're not showing the conversation title in the tooltip,
-        // use the original title from the terminal model.
-        let original_title = tab
-            .pane_group
-            .as_ref(ctx)
-            .original_title(ctx)
-            .unwrap_or_default();
-
-        let original_title_trimmed = original_title.trim();
-        if !original_title_trimmed.is_empty() {
-            return Some(original_title_trimmed.to_string());
-        }
-
-        None
-    }
-
-    /// Get the task description for the tooltip if this is an agent task
-    /// and the tooltip content would be different from what's displayed in the tab
-    fn get_agent_task_tooltip_message(tab: &TabData, ctx: &AppContext) -> Option<String> {
-        let terminal_view_id = tab
-            .pane_group
-            .as_ref(ctx)
-            .focused_session_view(ctx)
-            .map(|view| view.id())?;
-        let ai_history_model = BlocklistAIHistoryModel::as_ref(ctx);
-        let conversation = ai_history_model.active_conversation(terminal_view_id)?;
-
-        // Don't show tooltip for passive conversations
-        if conversation.is_entirely_passive() {
-            return None;
-        }
-
-        let conversation_title = conversation.title()?;
-        let trimmed_title = conversation_title.trim().to_owned();
-
-        // Truncate tooltip to prevent rendering issues
-        let truncated_name = truncate_from_end(&trimmed_title, MAX_TOOLTIP_LENGTH);
-
-        Some(truncated_name)
-    }
-
-    /// Check if the given indicator is an agent task indicator
     fn is_agent_task_indicator(indicator: &Indicator) -> bool {
         matches!(indicator, Indicator::Agent { .. } | Indicator::AmbientAgent)
-    }
-
-    /// Get the current working directory for the tooltip if this is an agent task
-    fn get_tooltip_directory(
-        indicator: &Indicator,
-        tab: &TabData,
-        ctx: &AppContext,
-    ) -> Option<String> {
-        if !Self::is_agent_task_indicator(indicator) {
-            return None;
-        }
-
-        tab.pane_group
-            .as_ref(ctx)
-            .focused_session_view(ctx)
-            .and_then(|view| {
-                view.as_ref(ctx)
-                    .model
-                    .lock()
-                    .block_list()
-                    .active_block()
-                    .metadata()
-                    .current_working_directory()
-                    .map(|s| s.to_string())
-            })
-    }
-
-    /// Get the git branch for the tooltip if this is an agent task
-    fn get_tooltip_git_branch(
-        indicator: &Indicator,
-        tab: &TabData,
-        ctx: &AppContext,
-    ) -> Option<String> {
-        if !Self::is_agent_task_indicator(indicator) {
-            return None;
-        }
-
-        tab.pane_group
-            .as_ref(ctx)
-            .focused_session_view(ctx)
-            .and_then(|view| {
-                view.as_ref(ctx)
-                    .model
-                    .lock()
-                    .block_list()
-                    .active_block()
-                    .git_branch()
-                    .cloned()
-            })
-    }
-
-    /// Generate the SavePosition ID for the tab text content
-    fn tab_text_position_id(&self) -> String {
-        format!("tab_text_{}", self.tab_index)
     }
 
     fn render_tab_content(&self) -> Box<dyn Element> {
@@ -1793,7 +1677,32 @@ impl<'a> TabComponent<'a> {
         let is_active = self.is_active_tab();
         let is_in_multi_tab_selection = self.is_in_multi_tab_selection;
 
-        let (background_color, border_fill) = if FeatureFlag::NewTabStyling.is_enabled() {
+        let (background_color, border_fill) = if self.floating_horizontal {
+            let bg = if let Some(custom_background) = self.styles.background {
+                let base_opacity = if is_active || (is_in_multi_tab_selection && is_hovered) {
+                    60
+                } else if is_in_multi_tab_selection {
+                    if self.grouped_member { 55 } else { 30 }
+                } else if is_hovered {
+                    40
+                } else {
+                    20
+                };
+                let opacity = (base_opacity as f32 * self.background_opacity as f32 / 100.) as u8;
+                match custom_background {
+                    ThemeFill::Solid(color) => coloru_with_opacity(color, opacity).into(),
+                    ThemeFill::VerticalGradient(gradient) => {
+                        coloru_with_opacity(gradient.get_most_opaque(), opacity).into()
+                    }
+                    ThemeFill::HorizontalGradient(gradient) => {
+                        coloru_with_opacity(gradient.get_most_opaque(), opacity).into()
+                    }
+                }
+            } else {
+                floating_tab_fill(is_active)
+            };
+            (bg, None)
+        } else if FeatureFlag::NewTabStyling.is_enabled() {
             // If there is a custom tab background, we overlay it with varying opacities.
             let bg = if let Some(custom_background) = self.styles.background {
                 let base_opacity = if is_active || (is_in_multi_tab_selection && is_hovered) {
@@ -1837,7 +1746,7 @@ impl<'a> TabComponent<'a> {
                 internal_colors::fg_overlay_3(theme)
             };
 
-            (bg, border)
+            (bg, Some(border))
         } else {
             let tab_opacity = if is_active || is_hovered {
                 WARP_2_HOVERED_TAB_COLOR_OPACITY
@@ -1865,7 +1774,7 @@ impl<'a> TabComponent<'a> {
                 internal_colors::fg_overlay_1(theme)
             };
 
-            (bg, border)
+            (bg, Some(border))
         };
 
         let build_full_content = |reserve_pin_space: bool| -> Box<dyn Element> {
@@ -1876,14 +1785,7 @@ impl<'a> TabComponent<'a> {
             if let Some(indicator) = self.render_indicator() {
                 flex_row.add_child(indicator);
             }
-            flex_row.add_child(
-                Shrinkable::new(
-                    1.0,
-                    SavePosition::new(self.render_tab_content(), &self.tab_text_position_id())
-                        .finish(),
-                )
-                .finish(),
-            );
+            flex_row.add_child(Shrinkable::new(1.0, self.render_tab_content()).finish());
             if let Some(hint) = self.render_shortcut_hint() {
                 flex_row.add_child(hint);
             }
@@ -2006,9 +1908,25 @@ impl<'a> TabComponent<'a> {
             .finish()
         };
 
+        // Parent the close overlay at pill height. A title-sized Stack is
+        // shorter than the 20px button, so ParentByPosition would clamp it off
+        // the vertical center.
+        let wrap_tab_content = |content: Box<dyn Element>| -> Box<dyn Element> {
+            if self.floating_horizontal {
+                Flex::column()
+                    .with_main_axis_size(MainAxisSize::Max)
+                    .with_main_axis_alignment(MainAxisAlignment::Center)
+                    .with_child(content)
+                    .finish()
+            } else {
+                content
+            }
+        };
+
         let build_full_stack = |is_narrow: bool| {
             let reserve_pin_space = self.show_pin_indicator() && !is_narrow;
-            let mut full_stack = Stack::new().with_child(build_full_content(reserve_pin_space));
+            let mut full_stack =
+                Stack::new().with_child(wrap_tab_content(build_full_content(reserve_pin_space)));
             full_stack.add_positioned_child(
                 build_close_button_overlay(is_narrow, is_hovered),
                 OffsetPositioning::offset_from_parent(
@@ -2021,7 +1939,7 @@ impl<'a> TabComponent<'a> {
             full_stack.finish()
         };
 
-        let mut compact_stack = Stack::new().with_child(compact_tab_content);
+        let mut compact_stack = Stack::new().with_child(wrap_tab_content(compact_tab_content));
         // Only show the close button on the active tab for narrow width
         // to prevent accidental clicks
         if self.is_active_tab() {
@@ -2093,22 +2011,34 @@ impl<'a> TabComponent<'a> {
             };
         }
 
-        let mut tab = Container::new(stack)
-            .with_vertical_padding(2.)
-            .with_background(background_color);
-        if FeatureFlag::NewTabStyling.is_enabled() {
-            let is_first_tab = self.tab_index == 0;
-            tab = tab.with_border(
-                Border::all(1.)
-                    // We only include a left border on the very first tab to avoid double borders.
-                    .with_sides(false, is_first_tab, false, true)
-                    .with_border_fill(border_fill),
-            );
+        let mut tab = if self.floating_horizontal {
+            Container::new(stack)
+                .with_background(background_color)
+                .with_corner_radius(CornerRadius::with_all(Radius::Pixels(FLOATING_CARD_RADIUS)))
+                .with_border(metallic_border())
         } else {
-            tab = tab
-                .with_corner_radius(CornerRadius::with_all(Radius::Pixels(4.0)))
-                .with_border(Border::all(1.).with_border_fill(border_fill));
-        }
+            let mut tab = Container::new(stack)
+                .with_vertical_padding(2.)
+                .with_background(background_color);
+            if FeatureFlag::NewTabStyling.is_enabled() {
+                let is_first_tab = self.tab_index == 0;
+                tab = tab.with_border(
+                    Border::all(1.)
+                        // We only include a left border on the very first tab to avoid double borders.
+                        .with_sides(false, is_first_tab, false, true)
+                        .with_border_fill(
+                            border_fill.expect("New tab styling always sets a border"),
+                        ),
+                );
+            } else {
+                tab = tab
+                    .with_corner_radius(CornerRadius::with_all(Radius::Pixels(4.0)))
+                    .with_border(Border::all(1.).with_border_fill(
+                        border_fill.expect("Legacy tab styling always sets a border"),
+                    ));
+            }
+            tab
+        };
 
         // If the tab is being dragged, add an opaque background behind it
         if is_tab_dragging {
@@ -2148,156 +2078,24 @@ impl UiComponent for TabComponent<'_> {
     type ElementType = Shrinkable;
 
     fn build(self) -> Self::ElementType {
-        let appearance = self.appearance;
         let tab_mouse_state = self.tab.tab_mouse_state.clone();
         let tab_index = self.tab_index;
         let is_tab_being_renamed = self.is_tab_being_renamed();
         let is_last_tab = self.tab_bar.tab_count == 1;
         let hover_fixed_width = self.tab_bar.hover_fixed_width;
-        let is_any_tab_dragging = self.tab_bar.is_any_tab_dragging;
         let draggable_state = self.tab.draggable_state.clone();
         let mouse_close_state = self.tab.close_mouse_state.clone();
         // Capture before `self` is moved into the Hoverable closure below.
         let for_drag_ghost = self.for_drag_ghost;
+        let floating_horizontal = self.floating_horizontal;
         let sole_grouped_member = self.sole_grouped_member;
         let locator = self.locator;
         let is_in_multi_tab_selection = self.is_in_multi_tab_selection;
 
-        // Extract values before moving self into closure
-        let tooltip_text = self.tooltip_message.clone();
-        let tooltip_directory = self.tooltip_directory.clone();
-        let tooltip_git_branch = self.tooltip_git_branch.clone();
-        let tab_text_position_id = self.tab_text_position_id();
-        let tooltip_mouse_state = self.tab.tooltip_mouse_state.clone();
-
-        // Main tab hover (for close button, etc - no delay)
         let mut tab = Hoverable::new(tab_mouse_state, move |state| {
             let is_hovered = state.is_hovered() || self.is_drag_target;
             self.render_tab_container(is_hovered)
         });
-
-        // Add tooltip hover on top with delay if we have a tooltip message
-        if let Some(tooltip_text) = tooltip_text {
-            let tooltip_text_clone = tooltip_text.clone();
-            let tooltip_directory_clone = tooltip_directory.clone();
-            let tooltip_git_branch_clone = tooltip_git_branch.clone();
-
-            // Layer the tooltip hover on top
-            tab = Hoverable::new(tooltip_mouse_state, move |tooltip_state| {
-                let base_tab = tab.finish();
-
-                if tooltip_state.is_hovered() && !is_tab_being_renamed && !is_any_tab_dragging {
-                    let font_color = appearance.theme().background().into_solid();
-
-                    let title_text = Text::new(
-                        tooltip_text_clone.clone(),
-                        appearance.ui_font_family(),
-                        appearance.ui_font_size(),
-                    )
-                    .with_color(font_color)
-                    .finish();
-
-                    let has_extra_info =
-                        tooltip_directory_clone.is_some() || tooltip_git_branch_clone.is_some();
-
-                    let tooltip_content: Box<dyn Element> = if has_extra_info {
-                        let mut column = Flex::column().with_child(title_text);
-
-                        if let Some(directory) = &tooltip_directory_clone {
-                            let folder_icon = Icon::Folder
-                                .to_warpui_icon(ThemeFill::Solid(font_color))
-                                .finish();
-
-                            let directory_row = Flex::row()
-                                .with_cross_axis_alignment(CrossAxisAlignment::Center)
-                                .with_child(
-                                    ConstrainedBox::new(folder_icon)
-                                        .with_height(appearance.ui_font_size())
-                                        .with_width(appearance.ui_font_size())
-                                        .finish(),
-                                )
-                                .with_child(
-                                    Container::new(
-                                        Text::new(
-                                            directory.clone(),
-                                            appearance.ui_font_family(),
-                                            appearance.ui_font_size(),
-                                        )
-                                        .with_color(font_color)
-                                        .finish(),
-                                    )
-                                    .with_margin_left(4.)
-                                    .finish(),
-                                )
-                                .finish();
-
-                            column.add_child(
-                                Container::new(directory_row).with_margin_top(4.).finish(),
-                            );
-                        }
-
-                        if let Some(branch) = &tooltip_git_branch_clone {
-                            let branch_icon = Icon::GitBranch
-                                .to_warpui_icon(ThemeFill::Solid(font_color))
-                                .finish();
-
-                            let branch_row = Flex::row()
-                                .with_cross_axis_alignment(CrossAxisAlignment::Center)
-                                .with_child(
-                                    ConstrainedBox::new(branch_icon)
-                                        .with_height(appearance.ui_font_size())
-                                        .with_width(appearance.ui_font_size())
-                                        .finish(),
-                                )
-                                .with_child(
-                                    Container::new(
-                                        Text::new(
-                                            branch.clone(),
-                                            appearance.ui_font_family(),
-                                            appearance.ui_font_size(),
-                                        )
-                                        .with_color(font_color)
-                                        .finish(),
-                                    )
-                                    .with_margin_left(4.)
-                                    .finish(),
-                                )
-                                .finish();
-
-                            column
-                                .add_child(Container::new(branch_row).with_margin_top(4.).finish());
-                        }
-
-                        column.finish()
-                    } else {
-                        title_text
-                    };
-
-                    let tooltip = Container::new(tooltip_content)
-                        .with_background(appearance.theme().tooltip_background())
-                        .with_corner_radius(CornerRadius::with_all(Radius::Pixels(4.)))
-                        .with_padding(Padding::uniform(6.))
-                        .finish();
-
-                    let mut stack = Stack::new().with_child(base_tab);
-
-                    stack.add_positioned_overlay_child(
-                        tooltip,
-                        OffsetPositioning::offset_from_save_position_element(
-                            tab_text_position_id.clone(),
-                            vec2f(0., 8.),
-                            PositionedElementOffsetBounds::WindowByPosition,
-                            PositionedElementAnchor::BottomLeft,
-                            ChildAnchor::TopLeft,
-                        ),
-                    );
-                    return stack.finish();
-                }
-
-                base_tab
-            })
-            .with_hover_in_delay(Duration::from_millis(500));
-        }
 
         // We only want the on_click action to take effect on the tab, if it's not being renamed at a moment.
         // Note that clicking on other tabs is still ok.
@@ -2351,8 +2149,6 @@ impl UiComponent for TabComponent<'_> {
             });
         }
 
-        // Note: Tooltip delay is now handled separately in the tooltip overlay
-
         let constrained_tab = if let Some(fixed_width) = hover_fixed_width {
             // Use fixed width when hovering over a close button
             ConstrainedBox::new(tab.finish())
@@ -2401,7 +2197,7 @@ impl UiComponent for TabComponent<'_> {
             let tab_with_drag: Box<dyn Element> = draggable.finish();
             SavePosition::new(tab_with_drag, &tab_position_id(tab_index)).finish()
         };
-        if FeatureFlag::NewTabStyling.is_enabled() {
+        if FeatureFlag::NewTabStyling.is_enabled() || floating_horizontal {
             Shrinkable::new(1.0, full_tab)
         } else {
             Shrinkable::new(

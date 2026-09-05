@@ -624,6 +624,14 @@ pub const WARP_PROMPT_HEIGHT_LINES: f32 = 0.9;
 
 const SCROLLBAR_WIDTH: ScrollbarWidth = ScrollbarWidth::Auto;
 
+fn terminal_scrollbar_width(app: &AppContext) -> ScrollbarWidth {
+    if *BlockListSettings::as_ref(app).show_scrollbar.value() {
+        SCROLLBAR_WIDTH
+    } else {
+        ScrollbarWidth::None
+    }
+}
+
 /// Width of the bookmark indicator
 const BOOKMARK_INDICATOR_WIDTH: f32 = 15.;
 /// Offset from the right for the bookmark preview
@@ -4157,7 +4165,10 @@ impl TerminalView {
         ctx.subscribe_to_model(&block_list_settings_handle, |me, _, evt, ctx| match evt {
             BlockListSettingsChangedEvent::ShowJumpToBottomOfBlockButton { .. }
             | BlockListSettingsChangedEvent::SnackbarEnabled { .. }
-            | BlockListSettingsChangedEvent::ShowBlockDividers { .. } => ctx.notify(),
+            | BlockListSettingsChangedEvent::ShowBlockDividers { .. }
+            | BlockListSettingsChangedEvent::ShowScrollbar { .. }
+            | BlockListSettingsChangedEvent::ShowBlockSelectionHighlight { .. }
+            | BlockListSettingsChangedEvent::ShowBlockPrompt { .. } => ctx.notify(),
             BlockListSettingsChangedEvent::PreserveInputFocusOnBlockSelection { .. } => {
                 // Fires for every terminal view, so use the focus-gated variant to avoid
                 // stealing focus from another pane or Settings.
@@ -9789,6 +9800,18 @@ impl TerminalView {
             },
             self.inline_menu_positioner.clone(),
         )
+        .with_overlay_input(self.should_apply_overlay_input_inset(app))
+    }
+
+    /// Chrome-only overlay check so `viewport_state` can reserve the card
+    /// without taking the terminal model lock.
+    fn should_apply_overlay_input_inset(&self, app: &AppContext) -> bool {
+        self.input
+            .as_ref(app)
+            .should_show_universal_developer_input(app)
+            && !self.has_active_cli_agent_input_session(app)
+            && !self.agent_view_controller.as_ref(app).is_active()
+            && !self.input.as_ref(app).is_cloud_mode_input_v2_composing(app)
     }
 
     /// Dismisses any open tooltips on the grid, returning whether any were actually closed.
@@ -24323,8 +24346,17 @@ impl TerminalView {
         sessions: &Sessions,
         padding_x: Pixels,
         tool_tip_below_button: bool,
+        show_block_prompt: bool,
         appearance: &Appearance,
     ) -> Box<dyn Element> {
+        if !show_block_prompt {
+            return SavePosition::new(
+                Empty::new().finish(),
+                format!("block_index:{index}").as_str(),
+            )
+            .finish();
+        }
+
         let terminal_theme_prompt: ColorU = appearance
             .theme()
             .sub_text_color(appearance.theme().background())
@@ -24432,6 +24464,12 @@ impl TerminalView {
             // button UX for shared sessions.
             .with_hover_out_delay(Duration::from_millis(500))
             .finish()
+    }
+
+    /// Warp prompt card floats over the block list so gutters show terminal
+    /// content instead of a reserved opaque input strip.
+    fn should_overlay_frosted_warp_input(&self, model: &TerminalModel, app: &AppContext) -> bool {
+        self.is_input_box_visible(model, app) && self.should_apply_overlay_input_inset(app)
     }
 
     fn render_inline_banners(
@@ -24703,6 +24741,7 @@ impl TerminalView {
             self.horizontal_clipped_scroll_state.clone(),
             required_terminal_width,
             theme,
+            terminal_scrollbar_width(app),
             alt_screen_element,
         );
 
@@ -24830,6 +24869,7 @@ impl TerminalView {
             enforce_minimum_contrast,
             appearance,
             Box::new(move |range, label_mouse_states, model, app| {
+                let show_block_prompt = *BlockListSettings::as_ref(app).show_block_prompt;
                 range
                     .iter()
                     .enumerate()
@@ -24841,6 +24881,7 @@ impl TerminalView {
                             sessions.as_ref(app),
                             padding_x,
                             i == 0,
+                            show_block_prompt,
                             Appearance::as_ref(app),
                         );
                         // Special-case the last block so there is a reliable way to target it
@@ -24876,7 +24917,7 @@ impl TerminalView {
             }),
             Box::new(
                 move |range,
-                      hovered_index,
+                      _hovered_index,
                       active_filter_editor_block_index,
                       filtered_blocks,
                       mouse_states,
@@ -24891,7 +24932,6 @@ impl TerminalView {
                                     filtered_blocks.contains(block_index)
                                 });
                             if has_active_filter
-                                || hovered_index == Some(*block_index)
                                 || active_filter_editor_block_index == Some(*block_index)
                             {
                                 Some(Self::render_filter_element(
@@ -24923,6 +24963,10 @@ impl TerminalView {
             self.inline_menu_positioner.clone(),
             None,
         );
+
+        if self.should_overlay_frosted_warp_input(model, app) {
+            element = element.with_overlay_input(true);
+        }
 
         if should_use_ligature_rendering(app) {
             element = element.with_ligature_rendering();
@@ -25029,6 +25073,7 @@ impl TerminalView {
             self.horizontal_clipped_scroll_state.clone(),
             required_terminal_width,
             theme,
+            terminal_scrollbar_width(app),
             element,
         );
 
@@ -25137,7 +25182,7 @@ impl TerminalView {
         let scrollable = Scrollable::vertical(
             self.blocklist_vertical_scroll_state.clone(),
             waterfall_gap_element.finish_scrollable(),
-            SCROLLBAR_WIDTH,
+            terminal_scrollbar_width(app),
             theme.disabled_text_color(theme.background()).into(),
             theme.main_text_color(theme.background()).into(),
             Fill::None,
@@ -28445,19 +28490,42 @@ impl View for TerminalView {
                     }
 
                     let input_box_visible = self.is_input_box_visible(&model, app);
-                    if input_box_visible {
+                    let overlay_warp_input =
+                        input_box_visible && self.should_overlay_frosted_warp_input(&model, app);
+                    if input_box_visible && !overlay_warp_input {
                         column.add_child(self.render_input());
-                    } else if self.should_render_legacy_ambient_agent_loading_footer(&model, app) {
+                    } else if !input_box_visible
+                        && self.should_render_legacy_ambient_agent_loading_footer(&model, app)
+                    {
                         column.add_child(ambient_agent::render_loading_footer(appearance));
-                    } else if self.show_remote_server_loading_footer(&model, app) {
+                    } else if !input_box_visible
+                        && self.show_remote_server_loading_footer(&model, app)
+                    {
                         column.add_child(
                             self.render_remote_server_loading_footer(&model, appearance, app),
                         );
                     }
 
-                    let stack = Stack::new()
+                    let mut stack = Stack::new()
                         .with_constrain_absolute_children()
                         .with_child(Clipped::new(column.finish()).finish());
+                    if overlay_warp_input {
+                        let (parent_anchor, child_anchor) = match input_mode {
+                            InputMode::PinnedToTop => (ParentAnchor::TopLeft, ChildAnchor::TopLeft),
+                            InputMode::PinnedToBottom | InputMode::Waterfall => {
+                                (ParentAnchor::BottomLeft, ChildAnchor::BottomLeft)
+                            }
+                        };
+                        stack.add_positioned_child(
+                            self.render_input(),
+                            OffsetPositioning::offset_from_parent(
+                                vec2f(0., 0.),
+                                ParentOffsetBounds::ParentBySize,
+                                parent_anchor,
+                                child_anchor,
+                            ),
+                        );
+                    }
                     if matches!(input_mode, InputMode::Waterfall) && !is_alt_screen_active {
                         self.render_waterfall_mode_background(&model, stack, app)
                     } else {
@@ -28728,13 +28796,14 @@ impl View for TerminalView {
                 && overhanging_block.visible_block_height_px()
                     > *JUMP_TO_BOTTOM_OVERHANG_THRESHOLD_PX
             {
+                let scrollbar_inset = terminal_scrollbar_width(app).as_f32();
                 let positioning = match (input_mode, self.is_input_box_visible(&model, app)) {
                     (InputMode::PinnedToBottom | InputMode::Waterfall, true) => {
                         // In waterfall or pinned to bottom mode, the button is positioned relative to the top right
                         // of the input area
                         OffsetPositioning::offset_from_save_position_element(
                             self.input.as_ref(app).save_position_id(),
-                            vec2f(-10. - SCROLLBAR_WIDTH.as_f32(), -10.),
+                            vec2f(-10. - scrollbar_inset, -10.),
                             PositionedElementOffsetBounds::WindowByPosition,
                             PositionedElementAnchor::TopRight,
                             ChildAnchor::BottomRight,
@@ -28743,7 +28812,7 @@ impl View for TerminalView {
                     // In pinned to top mode or the input is not visible, the button is positioned relative to the bottom right
                     // of the parent element
                     (_, _) => OffsetPositioning::offset_from_parent(
-                        vec2f(-10. - SCROLLBAR_WIDTH.as_f32(), -10.),
+                        vec2f(-10. - scrollbar_inset, -10.),
                         ParentOffsetBounds::ParentByPosition,
                         ParentAnchor::BottomRight,
                         ChildAnchor::BottomRight,
@@ -29425,12 +29494,13 @@ fn maybe_wrap_terminal_element_in_scrollable(
     horizontal_scroll_handle: ClippedScrollStateHandle,
     required_terminal_width: f32,
     theme: &WarpTheme,
+    scrollbar_width: ScrollbarWidth,
     element: impl NewScrollableElement + 'static,
 ) -> Box<dyn Element> {
     let nonactive_thumb_background = theme.disabled_text_color(theme.background()).into();
     let active_thumb_background = theme.main_text_color(theme.background()).into();
     let track_background = Fill::None;
-    let scrollbar_appearance = ScrollableAppearance::new(SCROLLBAR_WIDTH, true);
+    let scrollbar_appearance = ScrollableAppearance::new(scrollbar_width, true);
     match (is_scrollable_vertical, is_scrollable_horizontal) {
         (true, true) => {
             let config = DualAxisConfig::Manual {

@@ -4,11 +4,12 @@ use pathfinder_geometry::vector::vec2f;
 use vim::vim::{VimMode, VimState};
 use warp_completer::completer::Description;
 use warp_core::features::FeatureFlag;
+use warp_core::ui::theme::WarpTheme;
 use warpui::elements::{
     AnchorPair, Border, ChildAnchor, ConstrainedBox, Container, CornerRadius, CrossAxisAlignment,
-    DispatchEventResult, Element, EventHandler, Flex, OffsetPositioning, OffsetType, ParentAnchor,
-    ParentElement, ParentOffsetBounds, PositionedElementOffsetBounds, PositioningAxis, Radius,
-    Shrinkable, Stack, Text, XAxisAnchor,
+    DispatchEventResult, DropShadow, Element, EventHandler, Flex, OffsetPositioning, OffsetType,
+    ParentAnchor, ParentElement, ParentOffsetBounds, PositionedElementOffsetBounds,
+    PositioningAxis, Radius, Shrinkable, Stack, Text, XAxisAnchor,
 };
 use warpui::fonts::Weight;
 use warpui::presenter::ChildView;
@@ -18,6 +19,7 @@ use warpui::{AppContext, EntityId, SingletonEntity, ViewHandle};
 use crate::ai::llms::{LLMPreferences, should_show_key_icon_for_model};
 use crate::ai::{AIRequestUsageModel, BuyCreditsBannerDisplayState};
 use crate::appearance::Appearance;
+use crate::context_chips::spacing;
 use crate::settings::{AISettings, InputSettings};
 use crate::terminal::buy_credits_banner::BuyCreditsBanner;
 use crate::terminal::input::{Input, InputAction, InputSuggestionsMode, MenuPositioning};
@@ -113,6 +115,29 @@ pub(super) fn add_vim_status_to_stack(
     )
 }
 
+/// Wraps the given column with an event handler to focus the input view when clicked.
+pub(super) fn wrap_input_with_focus_handler(
+    is_active_session: bool,
+    column: Box<dyn Element>,
+) -> Box<dyn Element> {
+    if is_active_session {
+        EventHandler::new(
+            Flex::row()
+                .with_cross_axis_alignment(CrossAxisAlignment::End)
+                .with_child(Shrinkable::new(1., column).finish())
+                .finish(),
+        )
+        .on_left_mouse_down(move |ctx, _, _| {
+            ctx.dispatch_typed_action(TerminalAction::ClearSelectionsWhenShellMode);
+            ctx.dispatch_typed_action(InputAction::FocusInputBox);
+            DispatchEventResult::StopPropagation
+        })
+        .finish()
+    } else {
+        column
+    }
+}
+
 /// Wraps the given column, assumed to represent the full input content, with appropriate
 /// left padding to be consistent with the terminal content, as well as an event handler to
 /// focus the input view when clicked.
@@ -127,31 +152,38 @@ pub(super) fn wrap_input_with_terminal_padding_and_focus_handler(
         *PADDING_LEFT
     };
 
-    if is_active_session {
-        let mut flex_row = Flex::row().with_cross_axis_alignment(CrossAxisAlignment::End);
-
-        flex_row.add_child(
-            Shrinkable::new(
-                1.,
-                Container::new(column)
-                    .with_padding_left(terminal_padding)
-                    .finish(),
-            )
-            .finish(),
-        );
-
-        EventHandler::new(flex_row.finish())
-            .on_left_mouse_down(move |ctx, _, _| {
-                ctx.dispatch_typed_action(TerminalAction::ClearSelectionsWhenShellMode);
-                ctx.dispatch_typed_action(InputAction::FocusInputBox);
-                DispatchEventResult::StopPropagation
-            })
-            .finish()
-    } else {
+    wrap_input_with_focus_handler(
+        is_active_session,
         Container::new(column)
             .with_padding_left(terminal_padding)
-            .finish()
-    }
+            .finish(),
+    )
+}
+
+/// Inset frosted card chrome for the Warp prompt (not PS1).
+pub(super) fn wrap_warp_prompt_card(
+    child: Box<dyn Element>,
+    theme: &WarpTheme,
+    flush_top: bool,
+) -> Box<dyn Element> {
+    let margin = spacing::WARP_PROMPT_CARD_MARGIN;
+    Container::new(child)
+        .with_margin_left(margin)
+        .with_margin_right(margin)
+        .with_margin_bottom(margin)
+        .with_margin_top(if flush_top { 0. } else { margin })
+        .with_horizontal_padding(spacing::WARP_PROMPT_CARD_INNER_PADDING)
+        .with_corner_radius(CornerRadius::with_all(Radius::Pixels(
+            spacing::WARP_PROMPT_CARD_RADIUS,
+        )))
+        .with_background(
+            theme
+                .surface_2()
+                .with_opacity(spacing::WARP_PROMPT_CARD_VEIL_OPACITY),
+        )
+        .with_border(Border::all(1.).with_border_fill(theme.outline()))
+        .with_drop_shadow(DropShadow::default())
+        .finish()
 }
 
 /// Renders the selected workflow info overlay over the input.

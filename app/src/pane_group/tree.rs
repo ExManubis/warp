@@ -8,7 +8,7 @@ use warp_errors::report_error;
 use warpui::elements::{
     ChildAnchor, ConstrainedBox, Container, DispatchEventResult, Element, Empty, EventHandler,
     Flex, Hoverable, MouseStateHandle, OffsetPositioning, ParentAnchor, ParentElement,
-    ParentOffsetBounds, PositionedElementAnchor, PositionedElementOffsetBounds, Rect, SavePosition,
+    ParentOffsetBounds, PositionedElementAnchor, PositionedElementOffsetBounds, SavePosition,
     Shrinkable, Stack,
 };
 use warpui::platform::Cursor;
@@ -1116,9 +1116,9 @@ impl PaneBranch {
         // (the reason we have to do it this way is explained in the large comment above)
         for (divider, position_id) in divider_positions {
             let divider_element = if FeatureFlag::MinimalistUI.is_enabled() {
-                create_minimalist_divider(self.axis, divider, theme)
+                create_minimalist_divider(self.axis, divider)
             } else {
-                create_divider(self.axis, divider, theme)
+                create_divider(self.axis, divider)
             };
 
             stack.add_positioned_child(
@@ -1418,16 +1418,8 @@ fn divider_mouse_down_action(
     }
 }
 
-fn create_divider(
-    direction: SplitDirection,
-    item: &Divider,
-    theme: &WarpTheme,
-) -> Box<dyn Element> {
-    let divider = ConstrainedBox::new(
-        Rect::new()
-            .with_background(theme.split_pane_border_color())
-            .finish(),
-    );
+fn create_divider(direction: SplitDirection, item: &Divider) -> Box<dyn Element> {
+    let divider = ConstrainedBox::new(Empty::new().finish());
 
     let cursor_shape = match direction {
         SplitDirection::Horizontal => Cursor::ResizeLeftRight,
@@ -1454,16 +1446,8 @@ fn create_divider(
     .finish()
 }
 
-fn create_minimalist_divider(
-    direction: SplitDirection,
-    item: &Divider,
-    theme: &WarpTheme,
-) -> Box<dyn Element> {
-    let divider = ConstrainedBox::new(
-        Rect::new()
-            .with_background(theme.split_pane_border_color())
-            .finish(),
-    );
+fn create_minimalist_divider(direction: SplitDirection, item: &Divider) -> Box<dyn Element> {
+    let divider = ConstrainedBox::new(Empty::new().finish());
 
     let cursor_shape = match direction {
         SplitDirection::Horizontal => Cursor::ResizeLeftRight,

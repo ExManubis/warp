@@ -1,7 +1,6 @@
 use warp_core::settings::Setting;
 use warpui::elements::{
-    Border, Clipped, Container, DropTarget, Element, Flex, Hoverable, ParentElement, SavePosition,
-    Stack,
+    Clipped, Container, DropTarget, Element, Flex, Hoverable, ParentElement, SavePosition, Stack,
 };
 use warpui::presenter::ChildView;
 use warpui::{AppContext, SingletonEntity};
@@ -9,14 +8,13 @@ use warpui::{AppContext, SingletonEntity};
 use super::common::{
     add_command_xray_overlay, add_input_suggestions_overlays, add_voltron_overlay,
     add_workflow_info_overlay, should_show_terminal_input_message_bar,
-    wrap_input_with_terminal_padding_and_focus_handler,
+    wrap_input_with_focus_handler, wrap_warp_prompt_card,
 };
 use super::{Input, InputAction, InputDropTargetData};
 use crate::appearance::Appearance;
 use crate::context_chips::spacing;
 use crate::features::FeatureFlag;
 use crate::settings::{AppEditorSettings, InputModeSettings};
-use crate::terminal::block_list_settings::BlockListSettings;
 use crate::terminal::block_list_viewport::InputMode;
 use crate::terminal::settings::TerminalSettings;
 use crate::terminal::view::TerminalAction;
@@ -95,12 +93,11 @@ impl Input {
             );
         }
 
-        stack.add_child(wrap_input_with_terminal_padding_and_focus_handler(
+        stack.add_child(wrap_input_with_focus_handler(
             self.focus_handle
                 .as_ref()
                 .is_some_and(|h| h.is_active_session(app)),
             column.finish(),
-            false,
         ));
 
         if let Some(selected_workflow_state) = self.workflows_state.selected_workflow_state.as_ref()
@@ -149,18 +146,8 @@ impl Input {
             })
             .finish();
 
-        let show_block_dividers = *BlockListSettings::as_ref(app).show_block_dividers.value();
-
-        let input = if show_block_dividers {
-            Container::new(hoverable_input)
-                .with_border(
-                    Border::top(1.)
-                        .with_border_color(styles::default_border_color(appearance.theme())),
-                )
-                .finish()
-        } else {
-            hoverable_input
-        };
+        let flush_top = FeatureFlag::FileTree.is_enabled() && self.is_input_at_top(&model, app);
+        let input = wrap_warp_prompt_card(hoverable_input, appearance.theme(), flush_top);
 
         let mut column = Flex::column();
         let is_slash_commands = self.suggestions_mode_model.as_ref(app).is_slash_commands();

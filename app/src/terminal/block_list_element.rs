@@ -87,7 +87,7 @@ use crate::terminal::model::terminal_model::BlockIndex;
 use crate::terminal::safe_mode_settings::get_secret_obfuscation_mode;
 use crate::terminal::view::TerminalAction;
 use crate::terminal::warpify::SubshellSource;
-use crate::terminal::{SizeInfo, grid_renderer, should_right_click_paste};
+use crate::terminal::{BlockListSettings, SizeInfo, grid_renderer, should_right_click_paste};
 use crate::themes::theme::{Fill, WarpTheme};
 use crate::ui_components::{self, icons as UIIcon};
 use crate::util::color::Opacity;
@@ -172,7 +172,6 @@ enum SelectionCursorRenderLocation {
     End,
 }
 
-const OVERFLOW_BUTTON_ICON_PATH: &str = "bundled/svg/overflow.svg";
 /// The number of lines from the top of the blocklist where we should show the snackbar toggle
 /// button on mouse hover when the snackbar is collapsed.
 const SNACKBAR_TOGGLE_BUTTON_HOVER_LINES: f32 = 4.;
@@ -734,6 +733,9 @@ pub struct BlockListElement {
     /// The last laid out size of the input view.
     input_size_at_last_frame: Vector2F,
 
+    /// When true, the Warp prompt card is painted over this block list.
+    overlay_input: bool,
+
     block_footer_elements: HashMap<BlockIndex, Box<dyn Element>>,
 
     find_model: ModelHandle<TerminalFindModel>,
@@ -970,6 +972,7 @@ impl BlockListElement {
                 .horizontal_clipped_scroll_state,
             ai_render_context: terminal_view_render_context.ai_render_context,
             input_size_at_last_frame,
+            overlay_input: false,
             block_footer_elements: HashMap::new(),
             cursor_hint_text_element,
             cli_subagent_views,
@@ -993,6 +996,11 @@ impl BlockListElement {
 
     pub fn with_hide_cursor_cell(mut self) -> Self {
         self.hide_cursor_cell = true;
+        self
+    }
+
+    pub fn with_overlay_input(mut self, overlay_input: bool) -> Self {
+        self.overlay_input = overlay_input;
         self
     }
 
@@ -1032,6 +1040,7 @@ impl BlockListElement {
             },
             self.inline_menu_positioner.clone(),
         )
+        .with_overlay_input(self.overlay_input)
     }
 
     fn snackbar_header_state(&self) -> MutexGuard<'_, SnackbarHeader> {
@@ -1067,34 +1076,6 @@ impl BlockListElement {
             .warp_theme
             .sub_text_color(self.warp_theme.surface_2())
             .into_solid();
-
-        let icon = Container::new(
-            ConstrainedBox::new(Icon::new(OVERFLOW_BUTTON_ICON_PATH, icon_color).finish())
-                .with_height(26.)
-                .with_width(26.)
-                .finish(),
-        );
-
-        self.overflow_menu_button = Some(
-            SavePosition::new(
-                render_hoverable_block_button(
-                    icon,
-                    None,
-                    false,
-                    true,
-                    self.mouse_states.overflow_menu_button_mouse_state.clone(),
-                    &self.warp_theme,
-                    &self.ui_builder,
-                    move |ctx, _, _| {
-                        ctx.dispatch_typed_action(TerminalAction::BlockListContextMenu(
-                            BlockListMenuSource::BlockOverflowButton { block_index },
-                        ));
-                    },
-                ),
-                format!("context_menu_button_{block_index}").as_str(),
-            )
-            .finish(),
-        );
 
         let snackbar_toggle_icon;
         let rounded_corners;
@@ -2073,28 +2054,34 @@ impl BlockListElement {
         selection_cursor_render_location: SelectionCursorRenderLocation,
         ctx: &mut PaintContext,
     ) {
-        let total_block_heights = block_list.block_heights().summary().height;
-
         let viewport = self.viewport_state_after_layout(block_list);
         let (start, end) = viewport.selection_as_viewport_points(range);
 
         let cell_height = self.size_info.cell_height_px;
-        let visible_rows = self.size().unwrap().y().into_pixels().to_lines(cell_height);
-        // Offset vertically if the blocks do not take the entire screen, so we render the correct selections.
-        // This offset is only necessary for the MostRecentAtBottom block ordering because
-        // there is no gap at the top in the MostRecentAtTop ordering
+        // Offset to match paint: PinnedToBottom short content sits above the
+        // overlay card; PinnedToTop content starts below it.
         let selection_origin = match self.input_mode {
             InputMode::PinnedToBottom => {
                 origin
                     + vec2f(
                         0.,
-                        (visible_rows - total_block_heights)
-                            .max(Lines::zero())
+                        viewport
+                            .short_content_bottom_align_offset_lines()
                             .to_pixels(cell_height)
                             .as_f32(),
                     )
             }
-            InputMode::Waterfall | InputMode::PinnedToTop => origin,
+            InputMode::PinnedToTop => {
+                origin
+                    + vec2f(
+                        0.,
+                        viewport
+                            .overlay_inset_lines()
+                            .to_pixels(cell_height)
+                            .as_f32(),
+                    )
+            }
+            InputMode::Waterfall => origin,
         };
 
         let rendered_snackbar_selection = self.snackbar_header_state().render_selection(
@@ -3247,6 +3234,7 @@ impl Element for BlockListElement {
                     },
                     self.inline_menu_positioner.clone(),
                 )
+                .with_overlay_input(self.overlay_input)
             };
         }
 
@@ -3885,7 +3873,9 @@ impl Element for BlockListElement {
                         start_of_continuous_selected_blocks.contains(block_index);
                     let is_bottom_of_continuous_selection =
                         end_of_continuous_selected_blocks.contains(block_index);
-                    if is_current_block_selected {
+                    let show_block_selection_highlight =
+                        *BlockListSettings::as_ref(app).show_block_selection_highlight;
+                    if is_current_block_selected && show_block_selection_highlight {
                         let border_info = compute_border_info(
                             is_singleton,
                             tail_index,
@@ -3931,7 +3921,7 @@ impl Element for BlockListElement {
 
                     // If this is the top of a continuous selection, there's a top border, so we don't want to draw
                     // the gray border at the top of the block.
-                    if is_top_of_continuous_selection {
+                    if is_top_of_continuous_selection && show_block_selection_highlight {
                         draw_border_above_block = false;
                     }
 
@@ -4104,7 +4094,6 @@ impl Element for BlockListElement {
                     );
 
                     ctx.scene.start_layer(ClipBounds::ActiveLayer);
-                    let block_is_bookmarked = self.bookmark_elements.contains_key(block_index);
                     let offset = 136.; // 4 icons of 26px width + 4px padding between icons x3 + 4px left padding + 4 px right padding + 4px for selected block border + 8px scrollbar
 
                     let block_menu_items_start_origin = header_grid_origin
@@ -4138,6 +4127,10 @@ impl Element for BlockListElement {
                     // we want to detect that it will overlap and draw a background behind
                     // the buttons to occlude the prompt text behind it.
                     let is_block_hovered = self.hovered_block_index == Some(*block_index);
+                    let has_visible_hover_buttons = is_block_hovered
+                        && (self.overflow_menu_button.is_some()
+                            || self.ask_ai_assistant_button.is_some()
+                            || self.save_as_workflow_button.is_some());
 
                     let block_has_active_filter_icon = self
                         .filtered_blocks
@@ -4145,7 +4138,7 @@ impl Element for BlockListElement {
                         .is_some_and(|filtered_blocks| filtered_blocks.contains(block_index))
                         || self.active_filter_editor_block_index == Some(*block_index);
                     let show_toolbelt_background =
-                        is_block_hovered || block_has_active_filter_icon || block_is_bookmarked;
+                        has_visible_hover_buttons || block_has_active_filter_icon;
                     if show_toolbelt_background {
                         let prompt_max_x = match self.label_elements.get_mut(block_index) {
                             // If using the default prompt, use the "label" element's
@@ -4171,7 +4164,7 @@ impl Element for BlockListElement {
                         // it is a background block (output grid could contain long strings overlapping with the toolbelt area).
                         let display_rprompt = block.should_display_rprompt(&size)
                             && !self.label_elements.contains_key(block_index);
-                        if is_block_hovered
+                        if has_visible_hover_buttons
                             && (prompt_max_x > block_menu_items_start_origin.x()
                                 || display_rprompt
                                 || block.is_background())

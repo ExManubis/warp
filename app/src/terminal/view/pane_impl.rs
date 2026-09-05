@@ -109,12 +109,9 @@ impl TerminalView {
     }
 
     pub fn refresh_pane_header(&mut self, ctx: &mut ViewContext<Self>) {
-        let is_active_session = self.is_active_session(ctx);
-        self.pane_configuration
-            .update(ctx, move |pane_config, ctx| {
-                pane_config.set_show_active_pane_indicator(is_active_session, ctx);
-                pane_config.refresh_pane_header_overflow_menu_items(ctx);
-            });
+        self.pane_configuration.update(ctx, |pane_config, ctx| {
+            pane_config.refresh_pane_header_overflow_menu_items(ctx);
+        });
     }
 
     /// Set the pane title from agent chrome when available, falling back to the regular terminal title.

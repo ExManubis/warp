@@ -1,7 +1,6 @@
 use settings::Setting;
 use warpui::elements::{
-    Border, ChildView, Container, CornerRadius, DropTarget, Element, Flex, Hoverable,
-    ParentElement, Radius, SavePosition, Stack,
+    ChildView, Container, DropTarget, Element, Flex, Hoverable, ParentElement, SavePosition, Stack,
 };
 use warpui::{AppContext, SingletonEntity};
 
@@ -9,7 +8,7 @@ use super::Input;
 use super::common::{
     add_command_xray_overlay, add_input_suggestions_overlays, add_vim_status_to_stack,
     add_voltron_overlay, add_workflow_info_overlay, maybe_add_buy_credits_banner,
-    wrap_input_with_terminal_padding_and_focus_handler,
+    wrap_input_with_focus_handler, wrap_warp_prompt_card,
 };
 use crate::ai::blocklist::InputType;
 use crate::appearance::Appearance;
@@ -20,7 +19,6 @@ use crate::terminal::block_list_viewport::InputMode;
 use crate::terminal::input::{InputAction, InputDropTargetData};
 use crate::terminal::settings::TerminalSettings;
 use crate::terminal::view::TerminalAction;
-use crate::themes::theme::color::internal_colors;
 
 impl Input {
     /// Renders the universal input. This is used when `FeatureFlag::AgentView` is disabled and the
@@ -109,10 +107,9 @@ impl Input {
             );
         }
 
-        stack.add_child(wrap_input_with_terminal_padding_and_focus_handler(
+        stack.add_child(wrap_input_with_focus_handler(
             self.is_active_session(app),
             column.finish(),
-            true, // use adjusted padding for UDI
         ));
 
         if let Some(selected_workflow_state) = self.workflows_state.selected_workflow_state.as_ref()
@@ -156,38 +153,15 @@ impl Input {
             app,
         );
 
-        // If the file tree is enabled, don't include the top margin for UDI so that the UDI is flush with the
-        // file tree.
-        let margin_top = if FeatureFlag::FileTree.is_enabled() && self.is_input_at_top(&model, app)
-        {
-            0.
-        } else {
-            6.
-        };
-
-        // Wrap the stack in a container with background and border styling based on focus
-        let mut container = Container::new(
+        let flush_top = FeatureFlag::FileTree.is_enabled() && self.is_input_at_top(&model, app);
+        let card = wrap_warp_prompt_card(
             SavePosition::new(stack.finish(), &self.status_free_input_save_position_id()).finish(),
-        )
-        .with_margin_bottom(6.)
-        .with_margin_left(6.)
-        .with_margin_right(6.)
-        .with_margin_top(margin_top)
-        .with_corner_radius(CornerRadius::with_all(Radius::Pixels(8.)));
-
-        // Apply styling based on focus state
-        if self.is_pane_focused(app) {
-            // Focused: show background
-            container = container
-                .with_background(internal_colors::fg_overlay_1(theme))
-                .with_border(Border::all(1.).with_border_fill(theme.outline()));
-        } else {
-            // Unfocused: no background
-            container = container.with_border(Border::all(1.).with_border_fill(theme.outline()));
-        }
+            theme,
+            flush_top,
+        );
 
         let drop_target = DropTarget::new(
-            container.finish(),
+            card,
             InputDropTargetData::new(self.weak_view_handle.clone()),
         )
         .finish();
