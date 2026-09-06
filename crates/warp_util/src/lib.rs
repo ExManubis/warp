@@ -42,4 +42,3 @@ impl fmt::Debug for AsciiDebug<'_> {
         Ok(())
     }
 }
-

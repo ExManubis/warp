@@ -50,7 +50,7 @@ pub enum YourFeatureTelemetryEvent {
 
 - `EnablementState::Always` - Always send the event
 - `EnablementState::Flag(FeatureFlag::YourFeature)` - Only send when the feature flag is enabled
-- `EnablementState::Channel(Channel::Dev)` - Only send in specific build channels
+- `EnablementState::Channel(Channel::Release)` - Only send in specific build channels
 
 ```rust
 impl TelemetryEvent for YourFeatureTelemetryEvent {

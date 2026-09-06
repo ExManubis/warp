@@ -1,5 +1,6 @@
-use super::{derive_http_origin_from_ws_url, origin_from_server_root_url};
 use url::Url;
+
+use super::{derive_http_origin_from_ws_url, origin_from_server_root_url};
 
 #[test]
 fn wss_becomes_https_and_strips_path() {
