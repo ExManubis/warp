@@ -24,7 +24,7 @@
 #
 # Once the stapling is done, the app can be shared.
 #
-# Three passwords are read from GCP Secret Manager (or from env if --read-passwords-from-env is set) if you are codesigning.
+# Three passwords are read from GCP Secret Manager (or from env if --read-passwords-from-env is set) if you are codesigning with Warp's cert.
 # 1) WARP_NOTARIZATION_PASSWORD:  This is an "app-specific password" that
 #    is tied to the zach@warp.dev account.  See https://support.apple.com/en-us/HT204397
 # 2) WARP_DEVELOPER_ID_CERT_PASSWORD: This is a password tied to the private key
@@ -32,6 +32,11 @@
 # 3) WARP_CODESIGN_KEYCHAIN_PASSWORD: This is an arbitrary password only used
 #    in the lifetime of this app for creating the keychain used to sign.  Can
 #    be anything.
+#
+# For a personal Developer ID (sharing a DMG from a local checkout), pass
+# --developer-id. That signs with the Developer ID Application identity in your
+# login keychain and notarizes with NOTARY_KEYCHAIN_PROFILE or APPLE_ID +
+# APPLE_APP_SPECIFIC_PASSWORD. See the --developer-id flag below.
 #
 # See
 # https://github.com/burtonageo/cargo-bundle
@@ -84,8 +89,14 @@ cleanup_codesign_keychain() {
     fi
 }
 
+cleanup_developer_id_entitlements() {
+  if [[ -n "${DEVELOPER_ID_ENTITLEMENTS:-}" && -f "$DEVELOPER_ID_ENTITLEMENTS" ]]; then
+    rm -f "$DEVELOPER_ID_ENTITLEMENTS"
+  fi
+}
+
 # Set up cleanup trap
-trap 'cleanup_dmg_files "$DMG_DIR"; cleanup_codesign_keychain' EXIT
+trap 'cleanup_dmg_files "$DMG_DIR"; cleanup_codesign_keychain; cleanup_developer_id_entitlements' EXIT
 
 # Define a helper function that uses Python to compute a relative path.
 function relpath() {
@@ -121,13 +132,33 @@ function codesign_with_retry() {
 
 # Submit once so a transient polling failure can resume the same notarization
 # instead of uploading a duplicate artifact.
+function has_notary_credentials() {
+  if [[ -n "${NOTARY_KEYCHAIN_PROFILE:-}" ]]; then
+    return 0
+  fi
+  local apple_id="${APPLE_ID:-${WARP_NOTARIZATION_APPLE_ID:-}}"
+  local password="${APPLE_APP_SPECIFIC_PASSWORD:-${NOTARIZATION_PASSWORD:-${WARP_NOTARIZATION_PASSWORD:-}}}"
+  [[ -n "$apple_id" && -n "$password" && -n "${APPLE_TEAM_ID:-}" ]]
+}
+
 function notarize_artifact() {
   local artifact="$1"
-  local auth_args=(
-    --apple-id "$WARP_NOTARIZATION_APPLE_ID"
-    --password "$WARP_NOTARIZATION_PASSWORD"
-    --team-id "$APPLE_TEAM_ID"
-  )
+  local auth_args=()
+  if [[ -n "${NOTARY_KEYCHAIN_PROFILE:-}" ]]; then
+    auth_args=(--keychain-profile "$NOTARY_KEYCHAIN_PROFILE")
+  else
+    local apple_id="${APPLE_ID:-${WARP_NOTARIZATION_APPLE_ID:-}}"
+    local password="${APPLE_APP_SPECIFIC_PASSWORD:-${NOTARIZATION_PASSWORD:-${WARP_NOTARIZATION_PASSWORD:-}}}"
+    if [[ -z "$apple_id" || -z "$password" || -z "${APPLE_TEAM_ID:-}" ]]; then
+      echo "Error: Notarization requires NOTARY_KEYCHAIN_PROFILE, or APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD + a team ID." >&2
+      return 1
+    fi
+    auth_args=(
+      --apple-id "$apple_id"
+      --password "$password"
+      --team-id "$APPLE_TEAM_ID"
+    )
+  fi
 
   local submission_output
   if ! submission_output="$(
@@ -220,6 +251,8 @@ DEBUG=false
 ARTIFACT="app"
 CODESIGN=true
 SELFSIGN=false
+DEVELOPER_ID=false
+SKIP_NOTARIZATION=false
 OPEN_AFTER_BUNDLE=false
 READ_PASSWORDS_FROM_ENV=false
 
@@ -249,6 +282,7 @@ while (( "$#" )); do
       echo "Skipping code signing."
       CODESIGN=false
       SELFSIGN=false
+      DEVELOPER_ID=false
       shift
       ;;
     # Sign with a local Apple Development cert instead of the official Warp cert.
@@ -258,6 +292,25 @@ while (( "$#" )); do
       echo "Self-signing enabled."
       CODESIGN=false
       SELFSIGN=true
+      DEVELOPER_ID=false
+      shift
+      ;;
+    # Sign with a Developer ID Application cert from the login keychain and
+    # notarize so the DMG can be shared with other Macs. Does not use Warp's
+    # signing secrets. Override the identity with CODESIGN_IDENTITY + APPLE_TEAM_ID.
+    # Notarize with NOTARY_KEYCHAIN_PROFILE, or APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD.
+    --developer-id)
+      echo "Developer ID distribution signing enabled."
+      CODESIGN=false
+      SELFSIGN=false
+      DEVELOPER_ID=true
+      shift
+      ;;
+    # Sign but skip Apple notarization. Only meaningful with --developer-id;
+    # testers will still need to bypass Gatekeeper.
+    --skip-notarization)
+      echo "Skipping notarization."
+      SKIP_NOTARIZATION=true
       shift
       ;;
     # Build only for the default target architecture instead of universal binary
@@ -795,14 +848,43 @@ fi
 ## Step 2: Create code-signing keychain ##
 ##########################################
 
-if [[ $READ_PASSWORDS_FROM_ENV != true ]]; then
+if [[ $READ_PASSWORDS_FROM_ENV != true && $DEVELOPER_ID != true ]]; then
   echo "Skipping code-signing because passwords are not available in environment."
   CODESIGN=false
+fi
+
+SIGN_DISTRIBUTION=false
+if [[ $CODESIGN = true || $DEVELOPER_ID = true ]]; then
+  SIGN_DISTRIBUTION=true
+fi
+
+if [[ $DEVELOPER_ID = true ]]; then
+  echo "Resolving Developer ID Application identity..."
+  identity_line="$(
+    set -o pipefail
+    security find-identity -p codesigning -v | "$WORKSPACE_ROOT_DIR/script/macos/parse_developer_id_identity"
+  )"
+  read -r SIGNING_IDENTITY APPLE_TEAM_ID <<<"$identity_line"
+  if [[ -z "${SIGNING_IDENTITY:-}" || -z "${APPLE_TEAM_ID:-}" ]]; then
+    echo "Error: failed to resolve Developer ID identity." >&2
+    exit 1
+  fi
+  echo "Using Developer ID identity $SIGNING_IDENTITY (team $APPLE_TEAM_ID)"
+  if [[ $SKIP_NOTARIZATION != true ]] && ! has_notary_credentials; then
+    echo "Error: --developer-id requires notarization credentials so testers can open the DMG." >&2
+    echo "One-time setup:" >&2
+    echo "  xcrun notarytool store-credentials promptty-notary --apple-id YOU@email.com --team-id $APPLE_TEAM_ID --password <app-specific-password>" >&2
+    echo "Then:" >&2
+    echo "  NOTARY_KEYCHAIN_PROFILE=promptty-notary ./script/bundle --developer-id" >&2
+    echo "Or set APPLE_ID and APPLE_APP_SPECIFIC_PASSWORD. Pass --skip-notarization to sign only." >&2
+    exit 1
+  fi
 fi
 
 if [[ $CODESIGN = true ]]; then
   # TODO - does this need to change per user?  Seems like it's tied to the WARP_NOTARIZATION_PASSWORD password.
   APPLE_TEAM_ID="2BBY89MBSN"
+  SIGNING_IDENTITY="$APPLE_TEAM_ID"
   CODESIGN_KEYCHAIN_NAME="warp-codesign-keychain"
 
   echo "Starting codesigning..."
@@ -855,6 +937,28 @@ if [[ $SELFSIGN = true ]]; then
   elif [[ "$ARTIFACT" == cli || "$ARTIFACT" == warpctrl || "$ARTIFACT" == tui ]]; then
     echo "Self-signing $OUT_DIR/$WARP_BIN with ${SIGNING_CERT}..."
     codesign --force --options runtime --sign "$SIGNING_CERT" "$OUT_DIR/$WARP_BIN" --entitlements script/Debug-Entitlements.plist
+  fi
+elif [[ $DEVELOPER_ID = true ]]; then
+  DEVELOPER_ID_ENTITLEMENTS="$(mktemp "${TMPDIR:-/tmp}/promptty-developer-id-entitlements.XXXXXX.plist")"
+  "$WORKSPACE_ROOT_DIR/script/macos/prepare_developer_id_entitlements" \
+    "$WORKSPACE_ROOT_DIR/script/Entitlements.plist" \
+    "$DEVELOPER_ID_ENTITLEMENTS"
+  if [[ "$ARTIFACT" == app ]]; then
+    echo "Codesigning $BUNDLE_DIR/$WARP_APP_NAME.app with Developer ID..."
+    codesign_with_retry --deep -f -o runtime --timestamp -s "$SIGNING_IDENTITY" \
+      "$BUNDLE_DIR/$WARP_APP_NAME.app" --entitlements "$DEVELOPER_ID_ENTITLEMENTS"
+  elif [[ "$ARTIFACT" == cli || "$ARTIFACT" == warpctrl || "$ARTIFACT" == tui ]]; then
+    echo "Codesigning $OUT_DIR/$WARP_BIN with Developer ID..."
+    codesign_with_retry -f -o runtime --timestamp -s "$SIGNING_IDENTITY" \
+      "$OUT_DIR/$WARP_BIN" --entitlements "$DEVELOPER_ID_ENTITLEMENTS"
+
+    NOTARIZATION_ARTIFACT="$BUNDLE_DIR/${WARP_BIN}_notarize.zip"
+    if [[ -e "$NOTARIZATION_ARTIFACT" ]]; then
+      echo "Removing old notarization artifact..."
+      rm "$NOTARIZATION_ARTIFACT"
+    fi
+    ditto -c -k "$OUT_DIR/$WARP_BIN" "$NOTARIZATION_ARTIFACT"
+    STAPLE_TICKET=false
   fi
 elif [[ $CODESIGN = true ]]; then
   if [[ "$ARTIFACT" == app ]]; then
@@ -923,7 +1027,7 @@ if [[ "$ARTIFACT" = app ]]; then
 
   # If we're codesigning, stage the signed app and use that to create the DMG.
   # Otherwise, create a DMG from the bundle dir directly.
-  if [[ $CODESIGN = true ]]; then
+  if [[ $SIGN_DISTRIBUTION = true ]]; then
     if test -d "$DMG_DIR"; then
       echo "Clearing old dmg directory $DMG_DIR"
       rm -r "$DMG_DIR"
@@ -935,7 +1039,7 @@ if [[ "$ARTIFACT" = app ]]; then
     create_warp_dmg "$DMG_DIR"
 
     echo "Codesigning $DMG_DIR/$DMG_NAME..."
-    codesign_with_retry -f -s "$APPLE_TEAM_ID" --timestamp "$DMG_DIR/$DMG_NAME"
+    codesign_with_retry -f -s "$SIGNING_IDENTITY" --timestamp "$DMG_DIR/$DMG_NAME"
 
     NOTARIZATION_ARTIFACT="$DMG_DIR/$DMG_NAME"
     STAPLE_TICKET=true
@@ -954,7 +1058,7 @@ fi
 ## Step 5: Notarize the app ##
 ##############################
 
-if [[ $CODESIGN = true ]]; then
+if [[ $SIGN_DISTRIBUTION = true && $SKIP_NOTARIZATION != true ]]; then
   echo "Uploading $NOTARIZATION_ARTIFACT to Apple for notarization..."
   notarize_artifact "$NOTARIZATION_ARTIFACT"
 
@@ -970,6 +1074,8 @@ if [[ $CODESIGN = true ]]; then
   elif [[ "$ARTIFACT" = cli || "$ARTIFACT" = warpctrl || "$ARTIFACT" = tui ]]; then
     spctl -a -t open --context context:primary-signature -vv "$OUT_DIR/$WARP_BIN"
   fi
+elif [[ $DEVELOPER_ID = true && $SKIP_NOTARIZATION = true ]]; then
+  echo "Skipping notarization (--skip-notarization). Testers will need to bypass Gatekeeper."
 fi
 
 

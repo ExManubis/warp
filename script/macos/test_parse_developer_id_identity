@@ -1,0 +1,41 @@
+#!/bin/bash
+
+set -euo pipefail
+
+workspace_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+parser="$workspace_root/script/macos/parse_developer_id_identity"
+
+read -r -d '' fixture <<'EOF' || true
+  1) AABBCCDDEEFF00112233445566778899AABBCCDD "Apple Development: test@example.com (DEVTEAMID1)"
+  2) 11223344556677889900AABBCCDDEEFF00112233 "Developer ID Application: Test User (ABCD123456)"
+     2 valid identities found
+EOF
+
+read -r identity team_id <<<"$(printf '%s\n' "$fixture" | "$parser")"
+[[ "$identity" == "11223344556677889900AABBCCDDEEFF00112233" ]]
+[[ "$team_id" == "ABCD123456" ]]
+
+read -r identity team_id <<<"$(
+  printf '%s\n' "$fixture" | APPLE_TEAM_ID=TEAMOVERRIDE "$parser"
+)"
+[[ "$identity" == "11223344556677889900AABBCCDDEEFF00112233" ]]
+[[ "$team_id" == "TEAMOVERRIDE" ]]
+
+read -r identity team_id <<<"$(
+  CODESIGN_IDENTITY="Developer ID Application: Test User (ABCD123456)" \
+    APPLE_TEAM_ID=ABCD123456 \
+    "$parser" </dev/null
+)"
+[[ "$identity" == "Developer ID Application: Test User (ABCD123456)" ]]
+[[ "$team_id" == "ABCD123456" ]]
+
+if CODESIGN_IDENTITY="Developer ID Application: Test User (ABCD123456)" \
+  "$parser" </dev/null 2>/dev/null; then
+  echo "Expected CODESIGN_IDENTITY without APPLE_TEAM_ID to fail." >&2
+  exit 1
+fi
+
+if printf '%s\n' '     0 valid identities found' | "$parser" 2>/dev/null; then
+  echo "Expected missing Developer ID identity to fail." >&2
+  exit 1
+fi

@@ -1,0 +1,33 @@
+#!/bin/bash
+
+set -euo pipefail
+
+workspace_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+temp_dir="$(mktemp -d)"
+trap 'rm -rf "$temp_dir"' EXIT
+
+src="$workspace_root/script/Entitlements.plist"
+dst="$temp_dir/developer-id.entitlements"
+
+"$workspace_root/script/macos/prepare_developer_id_entitlements" "$src" "$dst"
+
+if grep -q "com.apple.security.application-groups" "$dst"; then
+  echo "Expected application-groups to be removed from $dst" >&2
+  exit 1
+fi
+if grep -q "2BBY89MBSN.dev.warp" "$dst"; then
+  echo "Expected Warp app group to be removed from $dst" >&2
+  exit 1
+fi
+if ! grep -q "com.apple.security.device.camera" "$dst"; then
+  echo "Expected remaining production entitlements to be preserved." >&2
+  exit 1
+fi
+
+# Removing a missing key should still succeed.
+second="$temp_dir/already-stripped.entitlements"
+"$workspace_root/script/macos/prepare_developer_id_entitlements" "$dst" "$second"
+if grep -q "com.apple.security.application-groups" "$second"; then
+  echo "Expected application-groups to stay absent on a second pass." >&2
+  exit 1
+fi

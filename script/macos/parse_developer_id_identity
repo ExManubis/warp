@@ -1,0 +1,48 @@
+#!/bin/bash
+#
+# Resolve a Developer ID Application identity for distribution signing.
+#
+# Reads `security find-identity -p codesigning -v` output on stdin and prints:
+#   <identity> <team-id>
+#
+# Environment:
+#   CODESIGN_IDENTITY  If set, use this identity as-is (requires APPLE_TEAM_ID).
+#   APPLE_TEAM_ID      Required with CODESIGN_IDENTITY; otherwise parsed from
+#                      the identity name (`... (TEAMID)`). When set without
+#                      CODESIGN_IDENTITY, overrides the parsed team ID.
+
+set -euo pipefail
+
+if [[ -n "${CODESIGN_IDENTITY:-}" ]]; then
+  if [[ -z "${APPLE_TEAM_ID:-}" ]]; then
+    echo "Error: CODESIGN_IDENTITY is set but APPLE_TEAM_ID is missing." >&2
+    exit 1
+  fi
+  printf '%s %s\n' "$CODESIGN_IDENTITY" "$APPLE_TEAM_ID"
+  exit 0
+fi
+
+if ! line="$(grep "Developer ID Application" | head -1)" || [[ -z "$line" ]]; then
+  echo "Error: No Developer ID Application certificate found in the keychain." >&2
+  echo "Create one at https://developer.apple.com/account/resources/certificates/list" >&2
+  echo "Or set CODESIGN_IDENTITY and APPLE_TEAM_ID." >&2
+  exit 1
+fi
+
+identity="$(awk '{print $2}' <<<"$line")"
+if [[ -z "$identity" ]]; then
+  echo "Error: Could not parse identity hash from: $line" >&2
+  exit 1
+fi
+
+if [[ ! "$line" =~ \(([A-Z0-9]+)\)\"[[:space:]]*$ ]]; then
+  echo "Error: Could not parse team ID from identity: $line" >&2
+  exit 1
+fi
+team_id="${BASH_REMATCH[1]}"
+
+if [[ -n "${APPLE_TEAM_ID:-}" ]]; then
+  team_id="$APPLE_TEAM_ID"
+fi
+
+printf '%s %s\n' "$identity" "$team_id"

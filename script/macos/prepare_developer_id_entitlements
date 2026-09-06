@@ -1,0 +1,30 @@
+#!/bin/bash
+#
+# Copy production entitlements and remove Warp's application-groups entry so
+# the bundle can be signed with a personal Developer ID (app group IDs must
+# match the signing team's ID).
+
+set -euo pipefail
+
+if [[ $# -ne 2 ]]; then
+  echo "Usage: $0 <source-entitlements> <destination>" >&2
+  exit 1
+fi
+
+src="$1"
+dst="$2"
+
+if [[ ! -f "$src" ]]; then
+  echo "Error: Entitlements file not found: $src" >&2
+  exit 1
+fi
+
+cp "$src" "$dst"
+plutil -convert xml1 "$dst"
+
+# plutil treats `.` as a nested key-path separator, so use PlistBuddy for the
+# literal entitlement name.
+if /usr/libexec/PlistBuddy -c 'Print :com.apple.security.application-groups' "$dst" \
+  >/dev/null 2>&1; then
+  /usr/libexec/PlistBuddy -c 'Delete :com.apple.security.application-groups' "$dst"
+fi
