@@ -1,4 +1,4 @@
-use warp_core::channel::{Channel, ChannelState};
+use warp_core::channel::Channel;
 
 use super::{RequestParams, ServerConversationToken};
 use crate::ai::agent::ServerOutputId;
@@ -7,37 +7,11 @@ use crate::server::team_scope::RequestTeamScope;
 use crate::workspaces::user_workspaces::{TeamContextForOperation, TeamlessScopeForTest};
 
 #[test]
-fn debugging_payload_is_link_on_dogfood_channels() {
-    let token = ServerConversationToken::new("conversation-token".to_owned());
-    let request_id = ServerOutputId::new("request-id".to_owned());
-    let expected_link = format!(
-        "{}/debug/maa/conversation-token",
-        ChannelState::server_root_url()
-    );
-
-    for channel in [Channel::Dev, Channel::Local] {
-        assert_eq!(
-            token.debugging_payload_for_channel(None, channel),
-            expected_link
-        );
-        assert_eq!(
-            token.debugging_payload_for_channel(Some(&request_id), channel),
-            format!("{expected_link}?request=request-id")
-        );
-    }
-}
-
-#[test]
-fn debugging_payload_is_id_on_non_dogfood_channels() {
+fn debugging_payload_is_id_on_all_channels() {
     let token = ServerConversationToken::new("conversation-token".to_owned());
     let request_id = ServerOutputId::new("request-id".to_owned());
 
-    for channel in [
-        Channel::Stable,
-        Channel::Preview,
-        Channel::Integration,
-        Channel::Oss,
-    ] {
+    for channel in [Channel::Release, Channel::Integration] {
         assert_eq!(
             token.debugging_payload_for_channel(None, channel),
             "{\"conversation_id\":\"conversation-token\"}"

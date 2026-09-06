@@ -21,11 +21,6 @@ fn enabled_features() -> HashSet<FeatureFlag> {
     // Enable features overridden for the given channel.
     let mut flags = ChannelState::additional_features();
 
-    // Enable flags for release builds, if appropriate.
-    if ChannelState::is_release_bundle() {
-        flags.extend(RELEASE_FLAGS);
-    }
-
     flags.extend([
         #[cfg(feature = "autoupdate")]
         FeatureFlag::Autoupdate,

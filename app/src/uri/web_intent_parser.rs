@@ -202,7 +202,7 @@ fn set_context_flags_from_url(url: Url) {
     }
 
     // Allow directly setting flags through query params in dogfood.
-    if ChannelState::channel().is_dogfood() {
+    if cfg!(debug_assertions) {
         for (param, value) in url.query_pairs() {
             let Ok(flag) = param.parse::<ContextFlag>() else {
                 continue;

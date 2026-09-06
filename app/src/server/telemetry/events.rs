@@ -5486,7 +5486,7 @@ impl TelemetryEventDesc for TelemetryEventDiscriminants {
             }
             Self::ToggleActiveAI => EnablementState::Always,
             Self::MemoryUsageStats => EnablementState::ChannelSpecific {
-                channels: vec![Channel::Local, Channel::Dev],
+                channels: vec![Channel::Integration],
             },
             Self::MemoryUsageHigh => EnablementState::Always,
             Self::TransientMemorySpike => EnablementState::Always,
@@ -5500,7 +5500,7 @@ impl TelemetryEventDesc for TelemetryEventDiscriminants {
                 EnablementState::Always
             }
             Self::BlockCompletedOnDogfoodOnly => EnablementState::ChannelSpecific {
-                channels: vec![Channel::Local, Channel::Dev],
+                channels: vec![Channel::Integration],
             },
             Self::CompletedSettingsImport
             | Self::SettingsImportConfigFocused
@@ -5605,7 +5605,7 @@ impl TelemetryEventDesc for TelemetryEventDiscriminants {
             Self::AgentModeSetupCodebaseContextAction { .. } => EnablementState::Always,
             Self::AgentModeSetupCreateEnvironmentAction { .. } => EnablementState::Always,
             Self::InputBufferSubmitted => EnablementState::ChannelSpecific {
-                channels: vec![Channel::Local, Channel::Dev],
+                channels: vec![Channel::Integration],
             },
             Self::AgentModeContinueConversationButtonClicked { .. } => EnablementState::Always,
             Self::AgentModeRewindDialogOpened { .. } => {

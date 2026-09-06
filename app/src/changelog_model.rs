@@ -3,15 +3,13 @@ use std::fmt;
 use std::sync::Arc;
 
 use channel_versions::{Changelog, MarkdownSection};
-use itertools::Itertools;
 use markdown_parser::{FormattedText, parse_markdown};
 use warpui::assets::asset_cache::{AssetCache, AssetSource};
 use warpui::image_cache::ImageType;
 use warpui::{Entity, ModelContext, SingletonEntity};
 
 use crate::autoupdate::{self};
-use crate::channel::{Channel, ChannelState};
-use crate::features::{FeatureFlag, PREVIEW_FLAGS};
+use crate::features::FeatureFlag;
 use crate::server::server_api::ServerApi;
 
 pub struct ChangelogModel {
@@ -132,33 +130,6 @@ impl ChangelogModel {
             _ => return,
         };
 
-        // For WarpPreview, add a section at the beginning describing
-        // preview-exclusive flags.
-        if ChannelState::channel() == Channel::Preview && !PREVIEW_FLAGS.is_empty() {
-            let preview_flags_vec: Vec<String> = PREVIEW_FLAGS
-                .iter()
-                .filter_map(|flag| flag.flag_description().map(ToOwned::to_owned))
-                .collect();
-
-            let mut preview_flags_string = preview_flags_vec
-                .iter()
-                .map(|flag| format!("* ***Preview-exclusive***: {flag}"))
-                .join("\n");
-            preview_flags_string.push('\n');
-
-            // Insert preview-exclusive features into the "New features" section (markdown_sections[0])
-            if markdown_sections.is_empty() {
-                markdown_sections.push(MarkdownSection {
-                    title: ChangelogHeader::NewFeatures.to_string(),
-                    markdown: preview_flags_string,
-                });
-            } else {
-                markdown_sections[0]
-                    .markdown
-                    .insert_str(0, preview_flags_string.as_str());
-            }
-        }
-
         // If there are no sections at all, add a section clarifying that there
         // are no meaningful updates this release.
         if markdown_sections.is_empty() {
@@ -166,18 +137,12 @@ impl ChangelogModel {
                 title: ChangelogHeader::NewFeatures.to_string(),
                 markdown: "* No notable changes this release\n".to_owned(),
             });
-            if ChannelState::channel() == Channel::Dev {
-                markdown_sections[0].markdown.push_str("* *Don't forget to put changelog information in your PR description, if applicable!*\n");
-            }
         } else if markdown_sections
             .iter()
             .all(|section| section.markdown.is_empty())
         {
             // Add this to the "New features" section (markdown_sections[0])
             "* No notable changes this release\n".clone_into(&mut markdown_sections[0].markdown);
-            if ChannelState::channel() == Channel::Dev {
-                markdown_sections[0].markdown.push_str("* *Don't forget to put changelog information in your PR description, if applicable!*\n");
-            }
         }
     }
 

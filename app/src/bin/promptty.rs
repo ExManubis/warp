@@ -1,21 +1,19 @@
+// On Windows, we don't want to display a console window when the application is running in release
+// builds. See https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute.
+#![cfg_attr(feature = "release_bundle", windows_subsystem = "windows")]
+
 use anyhow::Result;
-use warp_core::channel::{Channel, ChannelState};
-use warp_core::features;
+use warp_core::AppId;
+use warp_core::channel::{Channel, ChannelConfig, ChannelState};
 
 fn main() -> Result<()> {
-    let config = warp_channel_config::load_config!("local");
-
-    let mut state = ChannelState::new(Channel::Local, config)
-        .with_additional_features(features::DEBUG_FLAGS)
-        .with_additional_features(features::DOGFOOD_FLAGS)
-        .with_additional_features(features::PREVIEW_FLAGS)
-        .with_additional_features(features::LOCAL_FLAGS);
-
-    // Enable sandbox telemetry feature flag if the env var is set.
-    if std::env::var("WITH_SANDBOX_TELEMETRY").is_ok() {
-        state = state.with_additional_features(&[features::FeatureFlag::WithSandboxTelemetry]);
+    let mut state = ChannelState::new(
+        Channel::Release,
+        ChannelConfig::local_only(AppId::new("dev", "promptty", "PrompTTY"), "promptty.log"),
+    );
+    if cfg!(debug_assertions) {
+        state = state.with_additional_features(warp_core::features::DEBUG_FLAGS);
     }
-
     ChannelState::set(state);
 
     warp::run()
@@ -33,9 +31,9 @@ embed_plist::embed_info_plist_bytes!(r#"
     <key>CFBundleDisplayName</key>
     <string>PrompTTY</string>
     <key>CFBundleExecutable</key>
-    <string>warp</string>
+    <string>promptty</string>
     <key>CFBundleIdentifier</key>
-    <string>dev.warp.Warp-Local</string>
+    <string>dev.promptty.PrompTTY</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
@@ -51,7 +49,7 @@ embed_plist::embed_info_plist_bytes!(r#"
     <key>UIDesignRequiresCompatibility</key>
     <true/>
     <key>CFBundleURLTypes</key>
-    <array><dict><key>CFBundleURLName</key><string>Custom App</string><key>CFBundleURLSchemes</key><array><string>warplocal</string></array></dict></array>
+    <array><dict><key>CFBundleURLName</key><string>Custom App</string><key>CFBundleURLSchemes</key><array><string>promptty</string></array></dict></array>
     <key>NSHumanReadableCopyright</key>
     <string>© 2026, Denver Technologies, Inc</string>
     </dict>

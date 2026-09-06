@@ -2,7 +2,7 @@ use warpui::{SingletonEntity, UpdateView};
 
 use super::{
     AIAgentExchangeId, AIConversationId, AgentModeRewindEntrypoint, AppContext,
-    BlocklistAIHistoryModel, CONTEXT_MENU_WIDTH, ChannelState, ClipboardContent, ContextMenuAction,
+    BlocklistAIHistoryModel, CONTEXT_MENU_WIDTH, ClipboardContent, ContextMenuAction,
     ContextMenuState, ContextMenuType, EntityId, FeatureFlag, ForkAIConversationParams,
     ForkFromExchange, ForkedConversationDestination, MenuItem, MenuItemFields, RichContentLink,
     ServerConversationToken, ServerOutputId, ShareableObject, TerminalAction, TerminalModel,
@@ -277,7 +277,7 @@ impl TerminalView {
         conversation_token: ServerConversationToken,
         server_output_id: Option<ServerOutputId>,
     ) -> Vec<(String, ContextMenuAction)> {
-        if ChannelState::channel().is_dogfood() {
+        if cfg!(debug_assertions) {
             vec![
                 (
                     "Copy debugging link".to_string(),
@@ -447,7 +447,7 @@ impl TerminalView {
                     .into_item(),
             );
 
-            if ChannelState::channel().is_dogfood() {
+            if cfg!(debug_assertions) {
                 menu_items.push(
                     MenuItemFields::new("Fork from here")
                         .with_on_select_action(TerminalAction::ContextMenu(

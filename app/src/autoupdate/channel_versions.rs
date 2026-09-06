@@ -34,14 +34,11 @@ pub async fn fetch_channel_versions(
         channel_versions @ Ok(_) => channel_versions,
         Err(err) => {
             match ChannelState::channel() {
-                // Only log an error on Dev and Preview -- if this is failing, its likely to be
-                // failing for all users, and Stable has too many users (this error would flood
-                // our Sentry logs).
-                Channel::Dev | Channel::Preview => report_error!(err),
-                _ => log::warn!(
+                Channel::Release => log::warn!(
                     "Failed to retrieve channel versions from Warp server, falling \
                 back to GCP JSON storage."
                 ),
+                Channel::Integration => report_error!(err),
             }
             fetch_channel_versions_from_json_storage(server_api.http_client(), nonce).await
         }

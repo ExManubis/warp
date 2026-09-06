@@ -9,7 +9,7 @@ use warpui::{AppContext, WindowId, id};
 use super::model::block::SerializedBlock;
 use super::model::terminal_model::BlockIndex;
 use super::{GridType, TerminalModel};
-use crate::channel::{Channel, ChannelState};
+use crate::channel::ChannelState;
 use crate::editor::{InteractionState, ReplicaId};
 use crate::features::FeatureFlag;
 
@@ -341,18 +341,11 @@ pub fn join_link(session_id: &SessionId) -> String {
     // because the staging web URL won't resolve to a local build.
     let use_web_url = !ChannelState::uses_staging_server() || cfg!(feature = "release_bundle");
 
-    let mut link = if use_web_url {
+    if use_web_url {
         format!("{}/session/{}", ChannelState::server_root_url(), session_id,)
     } else {
         join_native_intent(session_id)
-    };
-
-    // If this is a preview build, route the sharing link to the preview server.
-    if matches!(ChannelState::channel(), Channel::Preview) {
-        link.push_str("?preview=true");
     }
-
-    link
 }
 
 /// Returns the full session sharing URL given a path.

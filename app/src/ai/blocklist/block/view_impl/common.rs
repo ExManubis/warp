@@ -16,7 +16,6 @@ use itertools::Itertools;
 use markdown_parser::{FormattedText, FormattedTextInline, TableAlignment};
 use pathfinder_color::ColorU;
 use pathfinder_geometry::vector::vec2f;
-use warp_core::channel::ChannelState;
 use warp_core::features::FeatureFlag;
 use warp_core::ui::appearance::Appearance;
 use warp_core::ui::color::blend::Blend;
@@ -3417,14 +3416,14 @@ pub(crate) fn render_debug_footer<V: View>(
     };
 
     // Check if we should show the submit button (hide for dogfood and enterprise users)
-    let is_dogfood = ChannelState::channel().is_dogfood();
+    let is_debug_build = cfg!(debug_assertions);
     let is_enterprise_user =
         UserWorkspaces::as_ref(app)
             .current_workspace()
             .is_some_and(|workspace| {
                 workspace.billing_metadata.customer_type == CustomerType::Enterprise
             });
-    let submit_button = if !is_dogfood && !is_enterprise_user {
+    let submit_button = if !is_debug_build && !is_enterprise_user {
         let submit_button_style = UiComponentStyles {
             font_color: Some(
                 appearance

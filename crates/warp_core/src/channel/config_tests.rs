@@ -3,7 +3,8 @@ use crate::AppId;
 
 #[test]
 fn local_only_config_has_no_warp_hosts() {
-    let config = ChannelConfig::local_only(AppId::new("dev", "warp", "WarpOss"), "warp-oss.log");
+    let config =
+        ChannelConfig::local_only(AppId::new("dev", "promptty", "PrompTTY"), "promptty.log");
 
     assert!(!config.cloud_enabled());
     assert!(config.server_config.is_none());
@@ -12,19 +13,19 @@ fn local_only_config_has_no_warp_hosts() {
     let json = serde_json::to_string(&config).expect("channel config should serialize");
     assert!(
         !json.contains("warp.dev"),
-        "OSS config must not embed Warp hosts: {json}"
+        "Release config must not embed Warp hosts: {json}"
     );
     assert!(
         !json.contains("AIza"),
-        "OSS config must not embed a Firebase API key: {json}"
+        "Release config must not embed a Firebase API key: {json}"
     );
 }
 
 #[test]
 fn missing_server_and_oz_fields_deserialize_as_disabled() {
     let json = r#"{
-        "app_id": "dev.warp.WarpOss",
-        "logfile_name": "warp-oss.log"
+        "app_id": "dev.promptty.PrompTTY",
+        "logfile_name": "promptty.log"
     }"#;
 
     let config: ChannelConfig =
@@ -36,8 +37,8 @@ fn missing_server_and_oz_fields_deserialize_as_disabled() {
 #[test]
 fn present_server_config_deserializes_as_enabled() {
     let json = r#"{
-        "app_id": "dev.warp.WarpOss",
-        "logfile_name": "warp-oss.log",
+        "app_id": "dev.promptty.PrompTTY",
+        "logfile_name": "promptty.log",
         "server_config": {
             "server_root_url": "http://192.0.2.0:9",
             "rtc_server_url": "ws://192.0.2.0:9/graphql/v2",

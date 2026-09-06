@@ -12465,9 +12465,9 @@ impl TerminalView {
                             ctx
                         );
 
-                        // On dogfood only, we're interested in the block commands, durations,
+                        // On debug builds, we're interested in the block commands, durations,
                         // and exit codes to trial Warp Analytics.
-                        if ChannelState::channel().is_dogfood() {
+                        if cfg!(debug_assertions) {
                             send_telemetry_from_ctx!(
                                 TelemetryEvent::BlockCompletedOnDogfoodOnly {
                                     block_finished_to_precmd_delay_ms: delay_ms,
@@ -17495,7 +17495,7 @@ impl TerminalView {
                                     .into_item(),
                             );
 
-                            if ChannelState::channel().is_dogfood() {
+                            if cfg!(debug_assertions) {
                                 items.push(
                                     MenuItemFields::new("Fork from here (dev only)")
                                         .with_on_select_action(TerminalAction::ContextMenu(

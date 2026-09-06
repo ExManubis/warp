@@ -6,7 +6,7 @@
 #[macro_export]
 macro_rules! safe_info {
     (safe: ($($safe_arg:tt)+), full: ($($full_arg:tt)+)) => (
-        if $crate::channel::ChannelState::channel().is_dogfood() {
+        if cfg!(debug_assertions) {
             log::info!($($full_arg)+)
         } else {
             log::info!($($safe_arg)+)
@@ -22,7 +22,7 @@ macro_rules! safe_info {
 #[macro_export]
 macro_rules! safe_warn {
     (safe: ($($safe_arg:tt)+), full: ($($full_arg:tt)+)) => (
-        if $crate::channel::ChannelState::channel().is_dogfood() {
+        if cfg!(debug_assertions) {
             log::warn!($($full_arg)+)
         } else {
             log::warn!($($safe_arg)+)
@@ -38,7 +38,7 @@ macro_rules! safe_warn {
 #[macro_export]
 macro_rules! safe_error {
     (safe: ($($safe_arg:tt)+), full: ($($full_arg:tt)+)) => ({
-        if $crate::channel::ChannelState::channel().is_dogfood() {
+        if cfg!(debug_assertions) {
             log::error!($($full_arg)+)
         } else {
             log::error!($($safe_arg)+)
@@ -56,7 +56,7 @@ macro_rules! safe_error {
 #[macro_export]
 macro_rules! safe_debug {
     (safe: ($($safe_arg:tt)+), full: ($($full_arg:tt)+)) => (
-        if $crate::channel::ChannelState::channel().is_dogfood() {
+        if cfg!(debug_assertions) {
             log::debug!($($full_arg)+)
         } else {
             log::debug!($($safe_arg)+)
@@ -72,7 +72,7 @@ macro_rules! safe_debug {
 #[macro_export]
 macro_rules! safe_anyhow {
     (safe: ($($safe_arg:tt)+), full: ($($full_arg:tt)+)) => (
-        if $crate::channel::ChannelState::channel().is_dogfood() {
+        if cfg!(debug_assertions) {
             anyhow::anyhow!($($full_arg)+)
         } else {
             anyhow::anyhow!($($safe_arg)+)
@@ -90,7 +90,7 @@ macro_rules! safe_anyhow {
 #[macro_export]
 macro_rules! safe_eprintln {
     (safe: ($($safe_arg:tt)*), full: ($($full_arg:tt)+)) => (
-        if $crate::channel::ChannelState::channel().is_dogfood() {
+        if cfg!(debug_assertions) {
             eprintln!($($full_arg)+)
         } else if !stringify!($($safe_arg)*).trim().is_empty() {
             eprintln!($($safe_arg)*)

@@ -1,4 +1,5 @@
 mod changelog;
+#[allow(dead_code)]
 mod channel_versions;
 #[cfg(target_os = "linux")]
 pub mod linux;
@@ -23,7 +24,6 @@ use warpui::windowing::{self, WindowManager};
 use warpui::{AppContext, Entity, ModelContext, SingletonEntity, ViewContext};
 
 pub use self::changelog::get_current_changelog;
-use self::channel_versions::fetch_channel_versions;
 use crate::channel::Channel;
 use crate::features::FeatureFlag;
 use crate::server::server_api::ServerApi;
@@ -767,31 +767,11 @@ fn new_update_id() -> String {
 /// Fetch the current version on the given channel.
 async fn fetch_version(
     channel: &Channel,
-    is_daily: bool,
-    update_id: &str,
-    server_api: Arc<ServerApi>,
+    _is_daily: bool,
+    _update_id: &str,
+    _server_api: Arc<ServerApi>,
 ) -> Result<VersionInfo> {
-    let versions = fetch_channel_versions(update_id, server_api.clone(), false, is_daily).await?;
-
-    let channel_version = match channel {
-        Channel::Stable => versions.stable,
-        Channel::Preview => versions.preview,
-        Channel::Dev => versions.dev,
-        Channel::Integration | Channel::Local | Channel::Oss => {
-            // These channels don't ship release artifacts, so there's no
-            // version to fetch. This branch is normally unreachable because
-            // `AutoupdateState::register` gates the poll loop on the
-            // `Autoupdate` feature flag, but builds (e.g. local wasm bundles)
-            // can end up with `Autoupdate` enabled while running on one of
-            // these channels. Return an error rather than panicking so the
-            // poll loop just logs and bails.
-            anyhow::bail!(
-                "Local, integration, and open-source channel binaries don't support autoupdate"
-            );
-        }
-    };
-    let version_info = channel_version.version_info();
-    Ok(version_info)
+    anyhow::bail!("{channel} channel binaries don't support autoupdate")
 }
 
 // This method is unimplemented on wasm, so we allow unused variables.
@@ -1140,19 +1120,7 @@ pub fn is_incoming_version_past_current(version: Option<&str>) -> bool {
 /// Returns the base URL that contains release assets for the given version
 /// of this app bundle.
 fn release_assets_directory_url(channel: Channel, version: &str) -> String {
-    let releases_base_url = ChannelState::releases_base_url();
-    match channel {
-        Channel::Stable => {
-            format!("{releases_base_url}/stable/{version}")
-        }
-        Channel::Preview => {
-            format!("{releases_base_url}/preview/{version}")
-        }
-        Channel::Dev => format!("{releases_base_url}/dev/{version}"),
-        Channel::Local | Channel::Integration | Channel::Oss => {
-            unreachable!("local/integration/oss autoupdate not supported");
-        }
-    }
+    unreachable!("{channel} autoupdate not supported (version {version})");
 }
 
 #[cfg(test)]

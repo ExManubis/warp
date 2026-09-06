@@ -669,21 +669,13 @@ fn is_pacman_signing_key_installed() -> bool {
 
 fn package_name(channel: Channel) -> &'static str {
     match channel {
-        Channel::Stable => "warp-terminal",
-        Channel::Preview => "warp-terminal-preview",
-        Channel::Dev => "warp-terminal-dev",
-        Channel::Integration => "warp-terminal-integration",
-        Channel::Local => "warp-terminal-local",
-        Channel::Oss => "warp-oss",
+        Channel::Release => "promptty",
+        Channel::Integration => "promptty-integration",
     }
 }
 
 fn repo_name(channel: Channel) -> String {
-    let package_name = package_name(channel);
-    let channel_suffix = package_name
-        .strip_prefix("warp-terminal")
-        .unwrap_or_default();
-    format!("warpdotdev{channel_suffix}")
+    package_name(channel).to_owned()
 }
 
 #[cfg(test)]

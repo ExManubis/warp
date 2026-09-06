@@ -8,7 +8,6 @@ use warpui::{AppContext, SingletonEntity};
 
 use super::UserWorkspaces;
 use crate::auth::AuthStateProvider;
-use crate::channel::ChannelState;
 use crate::workspaces::team::Team;
 use crate::workspaces::workspace::{
     BillingMetadata, CustomerType, PurchaseAddOnCreditsPolicy, Workspace,
@@ -75,7 +74,6 @@ impl UserWorkspaces {
     pub fn ai_allowed_for_team(team: Option<&Team>) -> bool {
         !team.is_some_and(|team| team.billing_metadata.customer_type == CustomerType::Enterprise)
             || team.is_some_and(|team| team.billing_metadata.is_warp_plan())
-            || ChannelState::channel().is_dogfood()
     }
 
     /// Whether Prompt Suggestions should be toggleable for the current user, based on the active policies.

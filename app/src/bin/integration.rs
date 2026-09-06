@@ -5,7 +5,7 @@ use warp_core::AppId;
 use warp_core::channel::{Channel, ChannelConfig, ChannelState, OzConfig, WarpServerConfig};
 
 #[derive(Debug, Default, Parser, Clone)]
-#[command(name = "warp-integration")]
+#[command(name = "promptty-integration")]
 #[clap(args_conflicts_with_subcommands = true)]
 pub struct Args {
     #[command(subcommand)]
@@ -18,14 +18,14 @@ pub fn main() -> Result<()> {
         ChannelConfig {
             app_id: AppId::new(
                 "dev",
-                "warp",
+                "promptty",
                 if cfg!(target_os = "macos") {
-                    "Warp-Integration"
+                    "PrompTTY-Integration"
                 } else {
-                    "WarpIntegration"
+                    "PrompTTYIntegration"
                 },
             ),
-            logfile_name: "warp_integration.log".into(),
+            logfile_name: "promptty-integration.log".into(),
             server_config: Some(WarpServerConfig {
                 firebase_auth_api_key: "".into(),
                 // Use an IP in the IANA testing range, with the TCP discard port, to

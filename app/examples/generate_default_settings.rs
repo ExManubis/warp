@@ -8,7 +8,7 @@
 //! per-generator registration list to keep in sync.
 //!
 //! Usage:
-//!   cargo run --example generate_default_settings -- --surface gui|tui [--channel dev|preview|stable] <output_path>
+//!   cargo run --example generate_default_settings -- --surface gui|tui [--channel release|debug] <output_path>
 //!
 //! Example:
 //!   cargo run --example generate_default_settings -- --surface gui ./default_settings.toml
@@ -18,7 +18,7 @@ use std::path::PathBuf;
 
 use settings::SettingsMode;
 use settings::schema::SettingSchemaEntry;
-use warp_core::features::{DEBUG_FLAGS, DOGFOOD_FLAGS, FeatureFlag, PREVIEW_FLAGS, RELEASE_FLAGS};
+use warp_core::features::{DEBUG_FLAGS, FeatureFlag};
 use warpui_extras::user_preferences::UserPreferences as _;
 use warpui_extras::user_preferences::toml_backed::TomlBackedUserPreferences;
 
@@ -37,12 +37,11 @@ fn active_flags_for_channel(channel: &str) -> HashSet<FeatureFlag> {
     let mut flags = HashSet::new();
 
     let flag_lists: &[&[FeatureFlag]] = match channel {
-        "stable" => &[RELEASE_FLAGS],
-        "preview" => &[RELEASE_FLAGS, PREVIEW_FLAGS],
-        "dev" => &[RELEASE_FLAGS, PREVIEW_FLAGS, DOGFOOD_FLAGS, DEBUG_FLAGS],
+        "release" | "integration" => &[],
+        "debug" => &[DEBUG_FLAGS],
         other => {
-            eprintln!("Unknown channel '{other}', defaulting to dev");
-            &[RELEASE_FLAGS, PREVIEW_FLAGS, DOGFOOD_FLAGS, DEBUG_FLAGS]
+            eprintln!("Unknown channel '{other}', defaulting to release");
+            &[]
         }
     };
 
@@ -60,7 +59,7 @@ fn main() {
 
     let args: Vec<String> = std::env::args().collect();
 
-    let mut channel = "dev";
+    let mut channel = "release";
     let mut surface: Option<&str> = None;
     let mut output_path: Option<PathBuf> = None;
     let mut i = 1;
@@ -94,7 +93,7 @@ fn main() {
 
     let Some(output_path) = output_path else {
         eprintln!(
-            "Usage: generate_default_settings --surface gui|tui [--channel dev|preview|stable] <output_path>"
+            "Usage: generate_default_settings --surface gui|tui [--channel release|debug] <output_path>"
         );
         std::process::exit(1);
     };

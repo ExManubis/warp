@@ -408,12 +408,8 @@ fn log_bundle_success_message(path: &Path) -> String {
 /// local TUI binary; installed builds invoke their channel-specific executable.
 fn tui_cli_shell_command(channel: Channel, arguments: &str) -> String {
     let launcher = match channel {
-        Channel::Local => "./script/run-tui --",
-        Channel::Stable => "warp",
-        Channel::Dev => "warp-dev",
-        Channel::Preview => "warp-preview",
-        Channel::Oss => "warp-oss",
-        Channel::Integration => "warp-integration",
+        Channel::Release => "promptty-tui",
+        Channel::Integration => "promptty-integration",
     };
     format!("{launcher} {arguments}")
 }
@@ -1046,7 +1042,7 @@ impl TuiTerminalSessionView {
             },
             ctx
         );
-        if ChannelState::channel().is_dogfood() {
+        if cfg!(debug_assertions) {
             let duration = match (serialized_block.start_ts, serialized_block.completed_ts) {
                 (Some(start), Some(completed)) => (completed - start).to_std().unwrap_or_default(),
                 (None, _) | (_, None) => Duration::default(),

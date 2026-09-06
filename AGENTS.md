@@ -198,13 +198,13 @@ for itself.
 
 ### Feature Flags
 
-Warp uses compile-time feature flags with a small runtime plumbing layer.
+PrompTTY uses compile-time feature flags with a small runtime plumbing layer.
 
 How to add a feature flag:
 - Add a new variant to `warp_core/src/features.rs` in the `FeatureFlag` enum
-- (Optional) Enable it by default for dogfood builds by listing it in `DOGFOOD_FLAGS`
 - Gate code paths with `FeatureFlag::YourFlag.is_enabled()`
-- For preview or release rollout, add to `PREVIEW_FLAGS` or `RELEASE_FLAGS` respectively (as appropriate)
+- To ship a feature to all users, add it to `app/Cargo.toml` `default` and the `enabled_features()` bridge
+- Debug builds additionally enable `DEBUG_FLAGS` (`DebugMode`, `RuntimeFeatureFlags`)
 
 Best practices:
 - **Prefer runtime checks over cfg directives**: Prefer `FeatureFlag::YourFlag.is_enabled()` over `#[cfg(...)]` compile-time directives so flags can be toggled without recompilation and are easier to clean up later. Use `#[cfg(...)]` only when the code cannot compile without them (for example, platform-specific code or dependencies that do not exist when the feature is disabled).
@@ -218,11 +218,6 @@ Example:
 pub enum FeatureFlag {
     YourNewFeature,
 }
-
-// Default-on for dogfood builds
-pub const DOGFOOD_FLAGS: &[FeatureFlag] = &[
-    FeatureFlag::YourNewFeature,
-];
 
 // Use in code
 if FeatureFlag::YourNewFeature.is_enabled() {

@@ -273,12 +273,8 @@ fn get_environment() -> Cow<'static, str> {
     };
 
     let base_environment_name = match channel {
-        Channel::Stable => "stable_release",
-        Channel::Preview => "preview_release",
-        Channel::Local => "local",
+        Channel::Release => "release",
         Channel::Integration => "integration_test",
-        Channel::Dev => "dev_release",
-        Channel::Oss => "oss_release",
     };
 
     if operating_system.is_empty() {
@@ -467,7 +463,7 @@ pub fn crash() {
 /// the user hasn't logged in yet.
 fn set_optional_user_information(
     user_id: Option<UserUid>,
-    email: Option<String>,
+    _email: Option<String>,
     ctx: &mut AppContext,
 ) {
     let user_id = user_id.map(|uid| uid.as_string()).unwrap_or_else(|| {
@@ -476,13 +472,8 @@ fn set_optional_user_information(
         let anonymous_id = get_or_create_anonymous_id(ctx);
         format!("anon.{anonymous_id}")
     });
-    // Only send along emails if we're on WarpDev.
     // We try to keep PII out of Sentry as much as possible.
-    let email = if ChannelState::channel() == Channel::Dev {
-        email
-    } else {
-        None
-    };
+    let email = None;
 
     // Set user for Rust sentry.
     sentry::configure_scope(|scope| {

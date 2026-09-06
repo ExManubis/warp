@@ -1,7 +1,7 @@
 [package]
 authors = ["Warp Team <dev@warp.dev>"]
-default-run = "warp-oss"
-description = "The cloud-backed terminal for individuals and teams"
+default-run = "promptty"
+description = "The local-first terminal for individuals and teams"
 edition = "2024"
 autobins = false
 name = "warp"
@@ -13,39 +13,17 @@ license.workspace = true
 name = "warp"
 path = "src/lib.rs"
 
-# We define separate targets for each channel (stable, preview, dev) so that we can
-# bundle with its own icon, app name, and channel-specific configuration (such as
-# flag overrides). Otherwise these binaries are exactly identical to our main binary.
+# One binary per remaining channel. Release is the product; Integration is the
+# test harness.
 
 [[bin]]
-name = "warp-oss"
-path = "src/bin/oss.rs"
+name = "promptty"
+path = "src/bin/promptty.rs"
 test = false
 
 [[bin]]
-name = "warp"
-path = "src/bin/local.rs"
-test = false
-
-[[bin]]
-name = "integration"
+name = "promptty-integration"
 path = "src/bin/integration.rs"
-test = false
-
-[[bin]]
-name = "stable"
-path = "src/bin/stable.rs"
-test = false
-
-[[bin]]
-name = "dev"
-path = "src/bin/dev.rs"
-test = false
-
-[[bin]]
-name = "preview"
-path = "src/bin/preview.rs"
-required-features = ["preview_channel"]
 test = false
 
 [dependencies]
@@ -228,7 +206,6 @@ vte.workspace = true
 walkdir.workspace = true
 warp-workflows.workspace = true
 warp_assets.workspace = true
-warp_channel_config.workspace = true
 warp_completer.workspace = true
 warp_core.workspace = true
 warp_errors = { workspace = true, features = ["reqwest-errors"] }
@@ -781,6 +758,7 @@ test-util = [
     "warp_terminal/test-util",
     "ai/test-util",
     "warp_server_client/test-util",
+    "warpui/test-util",
 ]
 terminal_lifecycle_recovery = []
 # Feature enabled only when app is compiled for integration tests.
@@ -834,7 +812,6 @@ fast_forward_autoexecute_button = []
 code_find_replace = []
 command_palette_file_search = []
 ai_context_menu_commands = []
-preview_channel = []
 ai_context_menu_code = []
 expand_edit_to_pane = []
 fallback_model_load_output_messaging = []
@@ -965,55 +942,14 @@ shell_widget_handoff = []
 history_search_ranking_v2 = []
 stored_screenshots = []
 
-[package.metadata.bundle.bin.warp-oss]
+[package.metadata.bundle.bin.promptty]
 category = "public.app-category.developer-tools"
-copyright = "© 2025, Denver Technologies, Inc"
-identifier = "dev.warp.WarpOss"
-name = "PrompTTYOss"
+copyright = "© 2026, Denver Technologies, Inc"
+identifier = "dev.promptty.PrompTTY"
+name = "PrompTTY"
 resources = ["assets/onboarding"]
 icon = ["icon/no-padding/512x512.png", "icon/no-padding/icon.ico"]
-short_description = "The open-source, cloud-backed terminal for individuals and teams."
-
-[package.metadata.bundle.bin.stable]
-category = "public.app-category.developer-tools"
-copyright = "© 2025, Denver Technologies, Inc"
-identifier = "dev.warp.Warp-Stable"
-name = "PrompTTY"
-osx_frameworks = [
-    "frameworks/default/Sentry-Dynamic-WithARM64e.xcframework/macos-arm64_arm64e_x86_64/Sentry.framework",
-]
-resources = ["assets/onboarding"]
-short_description = "The cloud-backed terminal for individuals and teams, stable build."
-
-[package.metadata.bundle.bin.preview]
-category = "public.app-category.developer-tools"
-copyright = "© 2025, Denver Technologies, Inc"
-identifier = "dev.warp.Warp-Preview"
-name = "PrompTTYPreview"
-osx_frameworks = [
-    "frameworks/default/Sentry-Dynamic-WithARM64e.xcframework/macos-arm64_arm64e_x86_64/Sentry.framework",
-]
-resources = ["assets/onboarding"]
-short_description = "The cloud-backed terminal for individuals and teams, feature preview build."
-
-[package.metadata.bundle.bin.dev]
-category = "public.app-category.developer-tools"
-copyright = "© 2025, Denver Technologies, Inc"
-identifier = "dev.warp.Warp-Dev"
-name = "PrompTTYDev"
-osx_frameworks = [
-    "frameworks/dev/Sentry-Dynamic-WithARM64e.xcframework/macos-arm64_arm64e_x86_64/Sentry.framework",
-]
-resources = ["assets/onboarding"]
-short_description = "The cloud-backed terminal for individuals and teams, developer build."
-
-[package.metadata.bundle.bin.warp]
-category = "public.app-category.developer-tools"
-copyright = "© 2025, Denver Technologies, Inc"
-identifier = "dev.warp.Warp-Local"
-name = "PrompTTY"
-resources = ["assets/onboarding"]
-short_description = "The cloud-backed terminal for individuals and teams, developer build."
+short_description = "The local-first terminal for individuals and teams."
 
 [package.metadata.cargo-udeps.ignore]
 normal = ["embed_plist"]

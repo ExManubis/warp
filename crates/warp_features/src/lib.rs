@@ -900,8 +900,8 @@ pub enum FeatureFlag {
     /// Gates NLD input classification matching the buffer against agent
     /// prompt history (in addition to shell command history). Still in
     /// development; currently disabled on all channels as a mitigation for
-    /// misclassification bug reports (see PR #12586). Re-enable via
-    /// `DOGFOOD_FLAGS` once the underlying issues are resolved.
+    /// misclassification bug reports (see PR #12586). Re-enable via Cargo
+    /// `default` once the underlying issues are resolved.
     NldPromptHistoryMatch,
 
     /// Gates the custom model router feature, which allows users to define
@@ -1013,89 +1013,6 @@ static FEATURES_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 /// Features used in debugging.
 pub const DEBUG_FLAGS: &[FeatureFlag] = &[FeatureFlag::DebugMode, FeatureFlag::RuntimeFeatureFlags];
-/// Features enabled only for the WarpLocal developer build.
-pub const LOCAL_FLAGS: &[FeatureFlag] = &[FeatureFlag::LocalClaudeCodexChildHarnesses];
-
-/// Features enabled for the development team.  The expectation is that, over
-/// time, these will move on to PREVIEW_FLAGS before being launched.
-pub const DOGFOOD_FLAGS: &[FeatureFlag] = &[
-    FeatureFlag::LogExpensiveFramesInSentry,
-    FeatureFlag::ToggleBootstrapBlock,
-    FeatureFlag::CreatingSharedSessions,
-    FeatureFlag::RemoveAutosuggestionDuringTabCompletions,
-    FeatureFlag::ResizeFix,
-    FeatureFlag::AgentModeWorkflows,
-    FeatureFlag::AgentModeAnalytics,
-    FeatureFlag::LazySceneBuilding,
-    FeatureFlag::SshDragAndDrop,
-    FeatureFlag::MultiWorkspace,
-    FeatureFlag::ImeMarkedText,
-    FeatureFlag::MSYS2Shells,
-    FeatureFlag::RetryTruncatedCodeResponses,
-    FeatureFlag::ContextLineReviewComments,
-    FeatureFlag::RunGeneratorsWithCmdExe,
-    FeatureFlag::Projects,
-    FeatureFlag::ProviderCommand,
-    FeatureFlag::MarkdownImages,
-    FeatureFlag::FileAndDiffSetComments,
-    FeatureFlag::FileGlobV2Warnings,
-    FeatureFlag::SummarizationViaMessageReplacement,
-    FeatureFlag::LocalComputerUse,
-    FeatureFlag::VideoRecording,
-    FeatureFlag::OzLaunchModal,
-    // These are enabled via 100% experiment on prod warp-server,
-    // but we need to enable here for dogfood builds.
-    FeatureFlag::CrossRepoContext,
-    FeatureFlag::CodebaseIndexPersistence,
-    FeatureFlag::FullSourceCodeEmbedding,
-    FeatureFlag::CodebaseIndexSpeedbump,
-    // End manually enabled Code features.
-    FeatureFlag::EditableMarkdownMermaid,
-    FeatureFlag::CodeReviewScrollPreservation,
-    FeatureFlag::RememberFastForwardState,
-    FeatureFlag::GeminiNotifications,
-    FeatureFlag::LocalDockerSandbox,
-    #[cfg(not(windows))]
-    FeatureFlag::SshRemoteServer,
-    FeatureFlag::RemoteCodebaseIndexing,
-    FeatureFlag::GPTConfigurableContextWindow,
-    FeatureFlag::RestorePromptOnInlineModelSelectorSearch,
-    FeatureFlag::WarpControlCli,
-    FeatureFlag::TerminalLifecycleRecovery,
-    FeatureFlag::PromptCacheExpiryWarning,
-    FeatureFlag::JupyterNotebookRendering,
-    FeatureFlag::MultiLevelOrchestration,
-    FeatureFlag::McpJsonTreeView,
-    FeatureFlag::BoxDrawingGlyphs,
-    FeatureFlag::PricingTransparency,
-    FeatureFlag::PeriodicHandoffCheckpoints,
-    FeatureFlag::CtrlCCancelsThirdPartyHarness,
-    FeatureFlag::WarpingModelName,
-    FeatureFlag::LrcActivitySignal,
-    FeatureFlag::StoredScreenshots,
-];
-
-/// Features enabled for feature preview build users (e.g.: Friends of Warp).
-/// All PREVIEW_FLAGS are also automatically added to dogfood builds (WarpDev).
-pub const PREVIEW_FLAGS: &[FeatureFlag] = &[
-    FeatureFlag::NativeShellCompletions,
-    FeatureFlag::ShellWidgetHandoff,
-    FeatureFlag::HistorySearchRankingV2,
-];
-
-/// Features enabled for all release builds (i.e.: everything but WarpLocal).
-/// NOTE: if you are promoting a feature from Preview to launch, you'll likely
-/// want to enable the feature by default in app/Cargo.toml, rather than add it to RELEASE_FLAGS.
-pub const RELEASE_FLAGS: &[FeatureFlag] = &[
-    FeatureFlag::Autoupdate,
-    FeatureFlag::Changelog,
-    FeatureFlag::CrashReporting,
-    FeatureFlag::VideoRecording,
-    FeatureFlag::ImeMarkedText,
-    FeatureFlag::SshRemoteServer,
-    #[cfg(target_os = "macos")]
-    FeatureFlag::DragTabsToWindows,
-];
 
 /// Flags that we want to allow to switch at runtime (assuming RuntimeFeatureFlags is set)
 pub const RUNTIME_FEATURE_FLAGS: &[FeatureFlag] = &[FeatureFlag::LocalClaudeCodexChildHarnesses];
@@ -1207,11 +1124,7 @@ impl FeatureFlag {
     pub fn flag_description(&self) -> Option<&'static str> {
         use FeatureFlag::*;
 
-        // Note: many feature flags are purposefully omitted from this list, in order to avoid blowing up
-        // the Preview changelog. Features below which are enabled for Preview via PREVIEW_FLAGS, will be added to the changelog.
-        // Features which are added to Stable should ideally have their feature flag removed entirely, but at the
-        // very least, the feature flag should be removed from the Preview changelog by removing it from PREVIEW_FLAGS.
-        // ** ONLY Preview-exclusive features should be added to this list! **
+        // Note: many feature flags are purposefully omitted from this list.
         match self {
             AgentSharedSessions => {
                 Some("Enables viewing agent conversations within shared sessions.")

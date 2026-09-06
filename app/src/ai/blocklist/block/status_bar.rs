@@ -1264,10 +1264,7 @@ fn should_send_agent_tip_shown_analytics_event(app: &AppContext) -> bool {
         return false;
     }
 
-    if matches!(
-        ChannelState::channel(),
-        Channel::Dev | Channel::Local | Channel::Integration
-    ) {
+    if ChannelState::channel() == Channel::Integration {
         return true;
     }
 

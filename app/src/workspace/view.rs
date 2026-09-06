@@ -26044,7 +26044,7 @@ impl TypedActionView for Workspace {
                                 ctx.open_file_path_in_explorer(Path::new(&output_path));
 
                                 #[cfg(feature = "crash_reporting")]
-                                if ChannelState::channel().is_dogfood() {
+                                if cfg!(debug_assertions) {
                                     // For dogfood process samples, we raise a sentry warning with the sample attatched.
                                     // We do this so that our performance bot can then read through the performance logs
                                     // in sentry and write up a report of findings/possible optimizations.
