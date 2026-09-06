@@ -1103,6 +1103,59 @@ pub const RELEASE_FLAGS: &[FeatureFlag] = &[
 pub const RUNTIME_FEATURE_FLAGS: &[FeatureFlag] = &[FeatureFlag::LocalClaudeCodexChildHarnesses];
 
 impl FeatureFlag {
+    /// Flags that only make sense when a Warp-hosted account/server exists.
+    pub fn requires_warp_cloud(self) -> bool {
+        matches!(
+            self,
+            FeatureFlag::Autoupdate
+                | FeatureFlag::AutoupdateUIRevamp
+                | FeatureFlag::CloudObjects
+                | FeatureFlag::FetchChannelVersionsFromWarpServer
+                | FeatureFlag::FetchGenericStringObjects
+                | FeatureFlag::CreatingSharedSessions
+                | FeatureFlag::ViewingSharedSessions
+                | FeatureFlag::SharedWithMe
+                | FeatureFlag::SharedSessionWriteToLongRunningCommands
+                | FeatureFlag::SessionSharingAcls
+                | FeatureFlag::WarpPacks
+                | FeatureFlag::SharedBlockTitleGeneration
+                | FeatureFlag::UsageBasedPricing
+                | FeatureFlag::DriveObjectsAsContext
+                | FeatureFlag::AgentSharedSessions
+                | FeatureFlag::CloudEnvironments
+                | FeatureFlag::CreateEnvironmentSlashCommand
+                | FeatureFlag::ScheduledAmbientAgents
+                | FeatureFlag::CloudMode
+                | FeatureFlag::CloudModeFromLocalSession
+                | FeatureFlag::CloudModeHostSelector
+                | FeatureFlag::CloudModeImageContext
+                | FeatureFlag::CloudModeSetupV2
+                | FeatureFlag::CloudModeInputV2
+                | FeatureFlag::TeamApiKeys
+                | FeatureFlag::CloudConversations
+                | FeatureFlag::AmbientAgentsRTC
+                | FeatureFlag::AmbientAgentsCommandLine
+                | FeatureFlag::AmbientAgentsImageUpload
+                | FeatureFlag::WarpManagedSecrets
+                | FeatureFlag::OzPlatformSkills
+                | FeatureFlag::OzIdentityFederation
+                | FeatureFlag::OzChangelogUpdates
+                | FeatureFlag::OzLaunchModal
+                | FeatureFlag::OpenWarpLaunchModal
+                | FeatureFlag::OrchestrationLaunchModal
+                | FeatureFlag::OrchestrationUnifiedStack
+                | FeatureFlag::OzHandoff
+                | FeatureFlag::HandoffLocalCloud
+                | FeatureFlag::HandoffCloudCloud
+                | FeatureFlag::FactoryMcp
+                | FeatureFlag::BillingAndUsagePageV2
+                | FeatureFlag::CloudRunners
+                | FeatureFlag::CloudAgentRunners
+                | FeatureFlag::WarpifyFooter
+                | FeatureFlag::ForceLogin
+        )
+    }
+
     pub fn is_enabled(&self) -> bool {
         #[cfg(all(debug_assertions, not(feature = "test-util")))]
         {
