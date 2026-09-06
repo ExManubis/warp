@@ -237,7 +237,7 @@ fn signed_out_welcome_matches_designed_copy_and_layout() {
             let lines = frame.buffer.to_lines();
 
             for expected in [
-                "Welcome to Warp",
+                "Welcome to PrompTTY",
                 "> Press enter to get started",
                 "Log in with Warp",
                 "Copy login URL (c)",
@@ -255,12 +255,12 @@ fn signed_out_welcome_matches_designed_copy_and_layout() {
             }
             let title_row = lines
                 .iter()
-                .position(|line| line.contains("Welcome to Warp"))
+                .position(|line| line.contains("Welcome to PrompTTY"))
                 .expect("welcome title renders");
             assert!(title_row > 0 && title_row < 12);
             assert_eq!(
                 lines[title_row]
-                    .find("Welcome to Warp")
+                    .find("Welcome to PrompTTY")
                     .expect("welcome title offset"),
                 3
             );
@@ -320,7 +320,7 @@ fn signed_out_welcome_uses_figma_brand_colors_in_dark_and_light_themes() {
                     frame.buffer[(u16::try_from(column).unwrap(), u16::try_from(row).unwrap())].fg
                 };
 
-                assert_eq!(cell_color("Welcome to Warp", 0), brand_primary);
+                assert_eq!(cell_color("Welcome to PrompTTY", 0), brand_primary);
                 assert_eq!(cell_color("> Press enter to get started", 0), brand_accent);
                 assert_eq!(cell_color("> Press enter to get started", 8), brand_accent);
                 assert_eq!(

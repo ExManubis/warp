@@ -4362,7 +4362,11 @@ fn background_session_does_not_receive_first_run_onboarding() {
             );
         });
         let lines = render_session(&mut app, &onboarding_view, 100, 24);
-        assert!(lines.iter().any(|line| line.contains("Welcome to Warp")));
+        assert!(
+            lines
+                .iter()
+                .any(|line| line.contains("Welcome to PrompTTY"))
+        );
         assert!(
             lines
                 .iter()

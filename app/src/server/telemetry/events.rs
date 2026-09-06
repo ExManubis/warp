@@ -1331,9 +1331,6 @@ pub enum TelemetryEvent {
         theme: String,
         entrypoint: String,
     },
-    AppIconSelection {
-        icon: String,
-    },
     CursorDisplayType {
         cursor: String,
     },
@@ -3047,7 +3044,6 @@ impl TelemetryEvent {
             TelemetryEvent::ThemeSelection { theme, entrypoint } => {
                 Some(json!({ "theme": theme, "entrypoint": entrypoint }))
             }
-            TelemetryEvent::AppIconSelection { icon } => Some(json!({"icon": icon})),
             TelemetryEvent::CursorDisplayType {
                 cursor: cursor_display_type,
             } => Some(json!({"cursor": cursor_display_type})),
@@ -4750,7 +4746,6 @@ impl TelemetryEvent {
             | TelemetryEvent::CopyInviteLink
             | TelemetryEvent::OpenThemeChooser
             | TelemetryEvent::ThemeSelection { .. }
-            | TelemetryEvent::AppIconSelection { .. }
             | TelemetryEvent::CursorDisplayType { .. }
             | TelemetryEvent::OpenThemeCreatorModal
             | TelemetryEvent::CreateCustomTheme
@@ -5292,7 +5287,6 @@ impl TelemetryEventDesc for TelemetryEventDiscriminants {
             Self::CopyInviteLink => EnablementState::Always,
             Self::OpenThemeChooser => EnablementState::Always,
             Self::ThemeSelection => EnablementState::Always,
-            Self::AppIconSelection => EnablementState::Always,
             Self::CursorDisplayType => EnablementState::Always,
             Self::OpenThemeCreatorModal => EnablementState::Always,
             Self::CreateCustomTheme => EnablementState::Always,
@@ -5776,7 +5770,6 @@ impl TelemetryEventDesc for TelemetryEventDiscriminants {
             Self::CopyInviteLink => "Copy Invite Link",
             Self::OpenThemeChooser => "Open Theme Chooser",
             Self::ThemeSelection => "Select Theme",
-            Self::AppIconSelection => "Select App Icon",
             Self::CursorDisplayType => "Select Cursor Type",
             Self::OpenThemeCreatorModal => "Open Theme Creator Modal",
             Self::CreateCustomTheme => "Create Custom Theme",
@@ -6324,7 +6317,6 @@ impl TelemetryEventDesc for TelemetryEventDiscriminants {
                 "Opened theme chooser (list of different themes and visualizations of those themes)"
             }
             Self::ThemeSelection => "Selected theme",
-            Self::AppIconSelection => "Selected app icon",
             Self::CursorDisplayType => "Selected cursor type",
             Self::OpenThemeCreatorModal => {
                 "Opened theme creator modal (modal to create a new theme)"

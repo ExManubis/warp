@@ -62,7 +62,7 @@ The following constants can be overwritten:
 ## Using icons
 
 Windows has its own icon file format that bundles together multiple icon sizes.
-App icons are located in `app/channels/<channel_name>/icon/no-padding`.
+App icons are located in `app/icon/no-padding`.
 The `.ico` files are generated using imagemagick:
 
 ```shell

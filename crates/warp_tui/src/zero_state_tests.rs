@@ -136,7 +136,7 @@ fn first_zero_state_matches_welcome_design_copy() {
         });
         let rendered = lines.join("\n");
         for expected in [
-            "Welcome to Warp",
+            "Welcome to PrompTTY",
             "What’s different about Warp",
             "✶ State of the art coding agents",
             "✶ Frontier and open-weight models",

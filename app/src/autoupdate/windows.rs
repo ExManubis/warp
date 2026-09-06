@@ -312,12 +312,12 @@ fn installer_file_name() -> Result<String> {
 
 fn app_name_prefix(channel: Channel) -> &'static str {
     match channel {
-        Channel::Stable => "Warp",
-        Channel::Preview => "WarpPreview",
-        Channel::Local => "warp",
+        Channel::Stable => "PrompTTY",
+        Channel::Preview => "PrompTTYPreview",
+        Channel::Local => "PrompTTY",
         Channel::Integration => "integration",
-        Channel::Dev => "WarpDev",
-        Channel::Oss => "warp-oss",
+        Channel::Dev => "PrompTTYDev",
+        Channel::Oss => "PrompTTYOss",
     }
 }
 

@@ -119,13 +119,6 @@ jobs:
             # We don't (yet) have any self-hosted Linux runners.
             is_self_hosted: false
             extra_test_args: ""
-
-          - os: "windows"
-            name: "Windows"
-            runner: windows-latest-large
-            # We don't (yet) have any self-hosted Windows runners.
-            is_self_hosted: false
-            extra_test_args: "--exclude command-signatures-v2 --exclude warp_js"
     runs-on: ${{ matrix.runner }}
     needs: params
     # Make sure an ID token is created with the necessary permissions to use
@@ -582,14 +575,6 @@ jobs:
             is_self_hosted: false
             null_device: "/dev/null"
             clippy_excludes: "--exclude warp_completer"
-
-          - os: "windows"
-            name: "Windows"
-            runner: windows-latest-large
-            # We don't (yet) have any self-hosted Windows runners.
-            is_self_hosted: false
-            null_device: "NUL"
-            clippy_excludes: "--exclude warp_js --exclude command-signatures-v2"
     runs-on: ${{ matrix.runner }}
     needs: params
     #    if: ${{ needs.params.outputs.affects-rust-sources == 'true' }}
@@ -677,10 +662,6 @@ jobs:
           cargo install --git https://github.com/wgsl-analyzer/wgsl-analyzer --tag "2025-06-28" wgslfmt && \
           find . -name "*.wgsl" -exec wgslfmt --check {} +
 
-      - name: Run PSScriptAnalyzer (PowerShell Lint)
-        run: ./script/lint_powershell -ci
-        shell: pwsh
-
       - name: Validate repo-sync markers
         uses: warpdotdev/repo-sync/actions/validate-markers@main
 
@@ -758,13 +739,6 @@ jobs:
             # We don't (yet) have any self-hosted Linux runners.
             is_self_hosted: false
             null_device: "/dev/null"
-
-          - os: "windows"
-            name: "Windows"
-            runner: windows-latest-large
-            # We don't (yet) have any self-hosted Windows runners.
-            is_self_hosted: false
-            null_device: "NUL"
 
           - os: "wasm"
             name: "wasm"

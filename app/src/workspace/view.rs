@@ -90,13 +90,13 @@ use warpui::clipboard::ClipboardContent;
 #[cfg(target_family = "wasm")]
 use warpui::elements::Percentage;
 use warpui::elements::{
-    Align, Border, ChildAnchor, ChildView, Clipped, ConstrainedBox, Container,
-    CornerRadius, CrossAxisAlignment, Dismiss, DispatchEventResult, DragAxis, Draggable,
-    DraggableState, DropTarget, Element, Empty, EventHandler, Expanded, Fill as ElementFill, Flex,
-    Highlight, Hoverable, Icon as WarpUiIcon, MainAxisAlignment, MainAxisSize,
-    MouseInBehavior, MouseStateHandle, OffsetPositioning, ParentAnchor, ParentElement,
-    ParentOffsetBounds, PositionedElementAnchor, PositionedElementOffsetBounds, Radius, Rect,
-    SavePosition, Shrinkable, SizeConstraintCondition, SizeConstraintSwitch, Stack, Text,
+    Align, Border, ChildAnchor, ChildView, Clipped, ConstrainedBox, Container, CornerRadius,
+    CrossAxisAlignment, Dismiss, DispatchEventResult, DragAxis, Draggable, DraggableState,
+    DropTarget, Element, Empty, EventHandler, Expanded, Fill as ElementFill, Flex, Highlight,
+    Hoverable, Icon as WarpUiIcon, MainAxisAlignment, MainAxisSize, MouseInBehavior,
+    MouseStateHandle, OffsetPositioning, ParentAnchor, ParentElement, ParentOffsetBounds,
+    PositionedElementAnchor, PositionedElementOffsetBounds, Radius, Rect, SavePosition, Shrinkable,
+    SizeConstraintCondition, SizeConstraintSwitch, Stack, Text,
 };
 use warpui::event::KeyState;
 use warpui::fonts::{Properties, Weight};
@@ -584,9 +584,7 @@ const TAB_BAR_ICON_PADDING: f32 = 4.;
 
 const TAB_BAR_PILL_WIDTH: f32 = 100.;
 const PILL_FONT_SIZE: f32 = 12.;
-// We use the word "Warp" in the Update Ready button to make it obvious that the terminal is Warp.
-// This can lead to free advertising when users screen-share Warp when an update is available.
-const UPDATE_READY_TEXT: &str = "Update Warp";
+const UPDATE_READY_TEXT: &str = "Update PrompTTY";
 
 const TAB_BAR_OVERFLOW_MENU_WIDTH: f32 = 300.;
 
@@ -617,7 +615,7 @@ const AI_ASSISTANT_BUTTON_ID: &str = "workspace_view:ai_assistant_button";
 
 const VERSION_DEPRECATION_BANNER_TEXT: &str = "Your app is out of date and some features may not work as expected. Please update immediately.";
 
-const VERSION_DEPRECATION_WITHOUT_PERMISSIONS_BANNER_TEXT: &str = "Some Warp features may not work as expected without updating immediately, but Warp is unable to perform the update.";
+const VERSION_DEPRECATION_WITHOUT_PERMISSIONS_BANNER_TEXT: &str = "Some PrompTTY features may not work as expected without updating immediately, but PrompTTY is unable to perform the update.";
 
 const ASK_AI_ASSISTANT_KEYBINDING_NAME: &str = "workspace:toggle_ai_assistant";
 const TOGGLE_RESOURCE_CENTER_KEYBINDING_NAME: &str = "workspace:toggle_resource_center";
@@ -8067,7 +8065,7 @@ impl Workspace {
                         .into_item(),
                 ),
                 AutoupdateStage::UnableToUpdateToNewVersion { .. } => menu_items.push(
-                    MenuItemFields::new("Update Warp manually")
+                    MenuItemFields::new("Update PrompTTY manually")
                         .with_on_select_action(WorkspaceAction::DownloadNewVersion)
                         .into_item(),
                 ),
@@ -9853,7 +9851,7 @@ impl Workspace {
                     ) =>
                 {
                     items.push(
-                        MenuItemFields::new("Update Warp manually")
+                        MenuItemFields::new("Update PrompTTY manually")
                             .with_on_select_action(WorkspaceAction::DownloadNewVersion)
                             .with_override_text_color(appearance.theme().ansi_fg_red())
                             .into_item(),
@@ -22223,13 +22221,14 @@ impl Workspace {
                 AutoupdateStage::UnableToUpdateToNewVersion { new_version }
                     if !self.autoupdate_unable_to_update_banner_dismissed =>
                 {
-                    let description =
-                        if is_incoming_version_past_current(new_version.soft_cutoff.as_deref()) {
-                            VERSION_DEPRECATION_WITHOUT_PERMISSIONS_BANNER_TEXT.to_owned()
-                        } else {
-                            "A new version is available but Warp is unable to perform the update."
-                                .to_owned()
-                        };
+                    let description = if is_incoming_version_past_current(
+                        new_version.soft_cutoff.as_deref(),
+                    ) {
+                        VERSION_DEPRECATION_WITHOUT_PERMISSIONS_BANNER_TEXT.to_owned()
+                    } else {
+                        "A new version is available but PrompTTY is unable to perform the update."
+                            .to_owned()
+                    };
 
                     Some(WorkspaceBannerFields {
                         banner_type: WorkspaceBanner::UnableToUpdateToNewVersion,
@@ -22238,7 +22237,7 @@ impl Workspace {
                         description,
                         secondary_button: None,
                         button: Some(WorkspaceBannerButtonDetails {
-                            text: "Update Warp manually".to_string(),
+                            text: "Update PrompTTY manually".to_string(),
                             action: WorkspaceAction::DownloadNewVersion,
                             variant: BannerButtonVariant::Outlined,
                             icon: None,
@@ -22253,7 +22252,7 @@ impl Workspace {
                         if is_incoming_version_past_current(new_version.soft_cutoff.as_deref()) {
                             VERSION_DEPRECATION_WITHOUT_PERMISSIONS_BANNER_TEXT.to_owned()
                         } else {
-                            "Warp was unable to launch the new installed version.".to_owned()
+                            "PrompTTY was unable to launch the new installed version.".to_owned()
                         };
 
                     Some(WorkspaceBannerFields {
@@ -22263,7 +22262,7 @@ impl Workspace {
                         description,
                         secondary_button: None,
                         button: Some(WorkspaceBannerButtonDetails {
-                            text: "Update Warp manually".to_string(),
+                            text: "Update PrompTTY manually".to_string(),
                             action: WorkspaceAction::DownloadNewVersion,
                             variant: BannerButtonVariant::Outlined,
                             icon: None,

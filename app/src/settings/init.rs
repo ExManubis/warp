@@ -8,7 +8,6 @@ use warpui::rendering::GPUPowerPreference;
 use warpui::{AppContext, SingletonEntity};
 use warpui_extras::user_preferences;
 
-use super::app_icon::AppIconSettings;
 use super::app_installation_detection::UserAppInstallDetectionSettings;
 use super::cloud_preferences::CloudPreferencesSettings;
 use super::initializer::SettingsInitializer;
@@ -89,7 +88,6 @@ pub fn register_all_settings(ctx: &mut AppContext) {
     CloudPreferencesSettings::register(ctx);
     WarpDrivePrivacySettings::register(ctx);
     UserAppInstallDetectionSettings::register(ctx);
-    AppIconSettings::register(ctx);
     AppEditorSettings::register(ctx);
     InputSettings::register(ctx);
     WarpifySettings::register(ctx);

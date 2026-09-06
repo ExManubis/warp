@@ -138,7 +138,7 @@ pub(crate) fn centered_in_viewport(content: Box<dyn TuiElement>) -> Box<dyn TuiE
 }
 
 pub(crate) fn render_welcome_title(builder: &TuiUiBuilder) -> Box<dyn TuiElement> {
-    TuiText::new("Welcome to Warp")
+    TuiText::new("Welcome to PrompTTY")
         .with_style(builder.brand_primary_style().add_modifier(Modifier::BOLD))
         .truncate()
         .finish()
@@ -293,7 +293,7 @@ pub(crate) fn login_waiting(
         .add_modifier(Modifier::BOLD);
     let mut content = TuiFlex::column()
         .child(
-            TuiText::new("Welcome to Warp")
+            TuiText::new("Welcome to PrompTTY")
                 .with_style(title)
                 .truncate()
                 .finish(),
@@ -436,7 +436,7 @@ pub(crate) fn login_browser_open_failed(
     let mut on_copy_key = on_copy.clone();
     let content = TuiFlex::column()
         .child(
-            TuiText::new("Welcome to Warp")
+            TuiText::new("Welcome to PrompTTY")
                 .with_style(title)
                 .truncate()
                 .finish(),
@@ -615,7 +615,7 @@ pub(crate) fn login_failed(
     let mut on_retry_enter = on_retry.clone();
     let content = TuiFlex::column()
         .child(
-            TuiText::new("Welcome to Warp")
+            TuiText::new("Welcome to PrompTTY")
                 .with_style(title)
                 .truncate()
                 .finish(),

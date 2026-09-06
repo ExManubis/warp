@@ -30,10 +30,10 @@ if [ -z "$TARGET_DIR" ] || [ "$TARGET_DIR" = "null" ]; then
 fi
 
 if [ "$WARP_CHANNEL" = "local" ]; then
-    WARP_APP_PATH="${TARGET_DIR}/debug/bundle/osx/WarpLocal.app"
+    WARP_APP_PATH="${TARGET_DIR}/debug/bundle/osx/PrompTTY.app"
     WARP_SCHEME_NAME="warplocal"
 else
-    WARP_APP_PATH="${TARGET_DIR}/debug/bundle/osx/WarpOss.app"
+    WARP_APP_PATH="${TARGET_DIR}/debug/bundle/osx/PrompTTYOss.app"
     WARP_SCHEME_NAME="warposs"
 fi
 DONT_OPEN=false
@@ -68,9 +68,9 @@ while (( "$#" )); do
     --release)
       echo "Detected release build, pointing at release bundle under ${TARGET_DIR}/release/bundle"
       if [ "$WARP_CHANNEL" = "local" ]; then
-          WARP_APP_PATH="${TARGET_DIR}/release/bundle/osx/WarpLocal.app"
+          WARP_APP_PATH="${TARGET_DIR}/release/bundle/osx/PrompTTY.app"
       else
-          WARP_APP_PATH="${TARGET_DIR}/release/bundle/osx/WarpOss.app"
+          WARP_APP_PATH="${TARGET_DIR}/release/bundle/osx/PrompTTYOss.app"
       fi
       PARAMS="$PARAMS $1"
       shift
@@ -79,9 +79,9 @@ while (( "$#" )); do
       PROFILE="$2"
       shift 2
       if [ "$WARP_CHANNEL" = "local" ]; then
-          WARP_APP_PATH="${TARGET_DIR}/${PROFILE}/bundle/osx/WarpLocal.app"
+          WARP_APP_PATH="${TARGET_DIR}/${PROFILE}/bundle/osx/PrompTTY.app"
       else
-          WARP_APP_PATH="${TARGET_DIR}/${PROFILE}/bundle/osx/WarpOss.app"
+          WARP_APP_PATH="${TARGET_DIR}/${PROFILE}/bundle/osx/PrompTTYOss.app"
       fi
       PARAMS="$PARAMS --profile $PROFILE"
       ;;
@@ -128,7 +128,7 @@ else
 fi
 NO_LICENSES=1 "${REPO_ROOT}/script/prepare_bundled_resources" "$WARP_APP_PATH/Contents/Resources" "$WARP_CHANNEL"
 
-"${REPO_ROOT}/script/compile_icon" "$WARP_CHANNEL" "$WARP_APP_PATH"
+"${REPO_ROOT}/script/compile_icon" "$WARP_APP_PATH"
 
 if [[ ",$FEATURES," =~ ",heap_usage_tracking," ]]; then
   echo "Bundling pprof..."

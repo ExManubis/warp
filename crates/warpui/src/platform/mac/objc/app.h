@@ -11,7 +11,6 @@
     : NSObject <NSApplicationDelegate, NSMenuDelegate, UNUserNotificationCenterDelegate>
 
 @property(strong) NSMenu *dockMenu;
-- (BOOL)setDockIconVisible:(BOOL)visible;
 
 @end
 
