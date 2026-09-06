@@ -3175,11 +3175,12 @@ fn test_initial_widths_are_computed_correctly() {
         let pane_group_width = window_width - 2.0 * workspace::WORKSPACE_PADDING;
         let pane_group_height =
             window_height - workspace::TOTAL_TAB_BAR_HEIGHT - 2.0 * workspace::WORKSPACE_PADDING;
-        let pane_card_inset = 2.0 * super::pane::view::PANE_CARD_PADDING;
 
         pane_group.read(&app, |pane_group, ctx| {
             // Make assertions about the expected widths of the various
-            // panes.
+            // panes. Initial `size_info` comes from `estimated_view_bounds`,
+            // which subtracts workspace padding and the tab bar but not the
+            // rendered card chrome.
             assert_eq!(
                 pane_group
                     .terminal_view_at_pane_index(0, ctx)
@@ -3188,7 +3189,7 @@ fn test_initial_widths_are_computed_correctly() {
                     .size_info()
                     .pane_width_px()
                     .as_f32(),
-                pane_group_width - pane_card_inset,
+                pane_group_width,
                 "Pane with index 0 had unexpected width!"
             );
             let half_width = (pane_group_width - tree::get_divider_thickness()) / 2.;
@@ -3201,7 +3202,7 @@ fn test_initial_widths_are_computed_correctly() {
                         .size_info()
                         .pane_width_px()
                         .as_f32(),
-                    half_width - pane_card_inset,
+                    half_width,
                     "Pane with index {i} had unexpected width!"
                 );
             }
@@ -3215,7 +3216,7 @@ fn test_initial_widths_are_computed_correctly() {
                         .size_info()
                         .pane_width_px()
                         .as_f32(),
-                    one_third_width - pane_card_inset,
+                    one_third_width,
                     "Pane with index {i} had unexpected width!"
                 );
             }
@@ -3232,7 +3233,7 @@ fn test_initial_widths_are_computed_correctly() {
                         .size_info()
                         .pane_height_px()
                         .as_f32(),
-                    one_third_height - pane_card_inset,
+                    one_third_height,
                     "Pane with index {i} had unexpected height!"
                 );
             }
@@ -3246,7 +3247,7 @@ fn test_initial_widths_are_computed_correctly() {
                         .size_info()
                         .pane_height_px()
                         .as_f32(),
-                    one_sixth_height - pane_card_inset,
+                    one_sixth_height,
                     "Pane with index {i} had unexpected height!"
                 );
             }
