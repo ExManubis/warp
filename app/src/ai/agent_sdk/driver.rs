@@ -102,8 +102,6 @@ use crate::workspaces::user_workspaces::{ResolvedTeamScope, UserWorkspaces};
 use crate::workspaces::workspace::BillingMetadata;
 
 pub(crate) mod attachments;
-#[cfg(feature = "local_fs")]
-pub(crate) mod cache_setup;
 mod checkpoint_coordinator;
 pub(crate) mod cloud_provider;
 pub(crate) mod environment;
