@@ -2,6 +2,8 @@
 
 ## How do I build PrompTTY?
 
+Host builds are macOS and Linux only. SSH into a Windows machine still works.
+
 ```bash
 ./script/bootstrap
 ./script/run

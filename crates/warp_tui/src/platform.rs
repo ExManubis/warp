@@ -23,14 +23,6 @@ pub(crate) fn build_reveal_command(path: &Path) -> Option<Command> {
 }
 
 /// Builds the platform-native file-manager command used to reveal a path.
-#[cfg(target_os = "windows")]
-pub(crate) fn build_reveal_command(path: &Path) -> Option<Command> {
-    let mut command = Command::new("explorer");
-    command.arg(format!("/select,{}", path.display()));
-    Some(command)
-}
-
-/// Builds the platform-native file-manager command used to reveal a path.
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 pub(crate) fn build_reveal_command(path: &Path) -> Option<Command> {
     let parent = path.parent()?;
@@ -40,12 +32,7 @@ pub(crate) fn build_reveal_command(path: &Path) -> Option<Command> {
 }
 
 /// Returns no reveal command on platforms without a supported file manager.
-#[cfg(not(any(
-    target_os = "macos",
-    target_os = "windows",
-    target_os = "linux",
-    target_os = "freebsd"
-)))]
+#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "freebsd")))]
 pub(crate) fn build_reveal_command(_path: &Path) -> Option<Command> {
     None
 }

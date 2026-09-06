@@ -1,3 +1,8 @@
+#[cfg(target_os = "windows")]
+compile_error!(
+    "PrompTTY does not support Windows as a host OS. Build on macOS or Linux. SSH into Windows remotes is still supported."
+);
+
 pub mod app_id;
 pub mod assertions;
 pub mod r#async;

@@ -27,7 +27,6 @@ body:
       options:
         - macOS
         - Linux
-        - Windows
         - Cross-platform
     validations:
       required: true

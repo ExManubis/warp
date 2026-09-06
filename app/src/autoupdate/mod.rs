@@ -4,8 +4,6 @@ mod channel_versions;
 pub mod linux;
 #[cfg(target_os = "macos")]
 mod mac;
-#[cfg(windows)]
-mod windows;
 
 use std::collections::VecDeque;
 use std::sync::Arc;

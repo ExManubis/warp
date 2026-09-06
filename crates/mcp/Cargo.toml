@@ -37,8 +37,5 @@ warpui_extras = { workspace = true, features = ["default", "user_preferences-tom
 rmcp = { workspace = true, features = ["client", "client-side-sse", "auth", "transport-streamable-http-client-reqwest", "transport-child-process"] }
 tokio = { workspace = true, features = ["sync", "macros", "rt", "time", "process", "io-util", "net"] }
 
-[target.'cfg(windows)'.dependencies]
-windows = { workspace = true, features = ["Win32_System_Threading"] }
-
 [dev-dependencies]
 axum.workspace = true

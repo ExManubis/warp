@@ -3099,7 +3099,7 @@ fn launch(ctx: &mut warpui::AppContext, app_state: Option<AppState>, launch_mode
             });
 
             // TODO(ben): We should skip this for LaunchMode::Test.
-            #[cfg(any(target_os = "macos", target_os = "windows"))]
+            #[cfg(target_os = "macos")]
             {
                 use crate::login_item::maybe_register_app_as_login_item;
                 use crate::terminal::general_settings::GeneralSettingsChangedEvent;

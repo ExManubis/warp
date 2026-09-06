@@ -89,7 +89,7 @@ Warp has two front-ends that share the `warp_core`/`warpui` Entity/model core (A
 
 1. **Entity-Handle System**: Views reference other views via handles, not direct ownership
 2. **Modular Structure**: Workspace contains multiple workspace configurations, each with terminals, notebooks, etc.
-3. **Cross-Platform**: Native implementations for macOS, Windows, Linux, plus WASM target
+3. **Cross-Platform**: Host builds for macOS and Linux, plus a WASM target. SSH into Windows remotes is still supported.
 4. **AI Integration**: Built-in AI assistant with context awareness and codebase indexing
 5. **Cloud Sync**: Objects can be synchronized across devices via Warp Drive
 

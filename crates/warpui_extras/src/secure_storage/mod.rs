@@ -7,7 +7,6 @@
 #[cfg(not(target_family = "wasm"))]
 #[cfg_attr(target_os = "macos", path = "mac.rs")]
 #[cfg_attr(any(target_os = "linux", target_os = "freebsd"), path = "linux.rs")]
-#[cfg_attr(target_os = "windows", path = "windows.rs")]
 mod imp;
 mod noop;
 mod unavailable;
@@ -15,14 +14,6 @@ mod unavailable;
 // Treat this as a noop on web, as there is no backing storage which is "secure".
 #[cfg(target_family = "wasm")]
 use noop as imp;
-
-#[cfg(target_os = "windows")]
-mod windows_only {
-    pub(super) use std::string::FromUtf8Error;
-}
-
-#[cfg(target_os = "windows")]
-use windows_only::*;
 
 /// A type alias for the concrete type stored within a warpui
 /// app context, enabling usage such as:
@@ -79,19 +70,6 @@ pub fn register_with_fallback(
             service_name,
             fallback_dir,
         ))
-    });
-}
-
-/// Registers a Windows-native Secure Storage provider
-/// that uses the provided directory to store data in encrypted files.
-#[cfg(target_os = "windows")]
-pub fn register_with_dir(
-    service_name: &str,
-    storage_dir: std::path::PathBuf,
-    ctx: &mut warpui_core::AppContext,
-) {
-    ctx.add_singleton_model(|_| -> Model {
-        Box::new(imp::SecureStorage::new_with_path(service_name, storage_dir))
     });
 }
 

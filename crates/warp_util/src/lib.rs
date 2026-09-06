@@ -43,5 +43,3 @@ impl fmt::Debug for AsciiDebug<'_> {
     }
 }
 
-#[cfg(windows)]
-pub mod windows;
