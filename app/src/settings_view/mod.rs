@@ -340,7 +340,8 @@ impl SettingsSection {
     /// Pages that only make sense when a Warp-hosted account/server exists.
     fn requires_warp_cloud(self) -> bool {
         match self {
-            SettingsSection::BillingAndUsage
+            SettingsSection::Account
+            | SettingsSection::BillingAndUsage
             | SettingsSection::Referrals
             | SettingsSection::SharedBlocks
             | SettingsSection::Teams
@@ -349,7 +350,6 @@ impl SettingsSection {
             | SettingsSection::CloudEnvironments
             | SettingsSection::WarpCloudAgentAPIKeys => true,
             SettingsSection::About
-            | SettingsSection::Account
             | SettingsSection::Appearance
             | SettingsSection::Features
             | SettingsSection::Keybindings

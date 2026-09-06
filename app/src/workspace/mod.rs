@@ -1190,6 +1190,7 @@ pub fn init(app: &mut AppContext) {
                 query: None,
             },
         )
+        .with_enabled(|| ChannelState::cloud_enabled())
         .with_context_predicate(id!("Workspace"))
         .with_custom_action(CustomAction::SearchDrive),
     ]);
@@ -1221,6 +1222,7 @@ pub fn init(app: &mut AppContext) {
         "Log out",
         WorkspaceAction::LogOut,
     )
+    .with_enabled(|| ChannelState::cloud_enabled())
     .with_group(bindings::BindingGroup::Settings.as_str())
     .with_context_predicate(id!("Workspace") & !id!("IsAnonymousUser"))]);
 
@@ -1230,6 +1232,7 @@ pub fn init(app: &mut AppContext) {
             "Toggle resource center",
             WorkspaceAction::ToggleResourceCenter,
         )
+        .with_enabled(|| ChannelState::cloud_enabled())
         .with_group(bindings::BindingGroup::Navigation.as_str())
         .with_context_predicate(id!("Workspace"))
         .with_custom_action(CustomAction::ToggleResourceCenter)]);
@@ -1542,6 +1545,7 @@ fn add_open_setting_pages_as_editable_binding(app: &mut AppContext) {
             "Open Settings: Account",
             WorkspaceAction::ShowSettingsPage(SettingsSection::Account),
         )
+        .with_enabled(|| ChannelState::cloud_enabled())
         .with_context_predicate(id!("Workspace"))
         .with_group(bindings::BindingGroup::Settings.as_str())
         .with_custom_action(CustomAction::ShowAccount),
@@ -1692,18 +1696,21 @@ fn add_overflow_menu_items_as_editable_binding(app: &mut AppContext) {
             "Join our Slack community (opens external link)",
             WorkspaceAction::JoinSlack,
         )
+        .with_enabled(|| ChannelState::cloud_enabled())
         .with_context_predicate(id!("Workspace")),
         EditableBinding::new(
             "workspace:link_to_user_docs",
             "View user docs (opens external link)",
             WorkspaceAction::ViewUserDocs,
         )
+        .with_enabled(|| ChannelState::cloud_enabled())
         .with_context_predicate(id!("Workspace")),
         EditableBinding::new(
             "workspace:send_feedback",
             BindingDescription::new("Send feedback (opens external link)"),
             WorkspaceAction::SendFeedback,
         )
+        .with_enabled(|| ChannelState::cloud_enabled())
         .with_context_predicate(id!("Workspace")),
         #[cfg(not(target_family = "wasm"))]
         EditableBinding::new(
@@ -1717,6 +1724,7 @@ fn add_overflow_menu_items_as_editable_binding(app: &mut AppContext) {
             "View privacy policy (opens external link)",
             WorkspaceAction::ViewPrivacyPolicy,
         )
+        .with_enabled(|| ChannelState::cloud_enabled())
         .with_context_predicate(id!("Workspace")),
     ]);
 }

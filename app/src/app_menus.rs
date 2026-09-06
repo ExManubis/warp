@@ -76,7 +76,10 @@ pub fn menu_bar(ctx: &mut AppContext) -> MenuBar {
     if ChannelState::cloud_enabled() {
         menus.push(make_new_drive_menu(ctx));
     }
-    menus.extend([make_new_window_menu(), make_new_help_menu()]);
+    menus.push(make_new_window_menu());
+    if ChannelState::cloud_enabled() {
+        menus.push(make_new_help_menu());
+    }
     MenuBar::new(menus)
 }
 
@@ -147,7 +150,7 @@ fn make_new_app_menu(ctx: &AppContext) -> Menu {
         ctx,
     )];
 
-    if !FeatureFlag::AvatarInTabBar.is_enabled() {
+    if ChannelState::cloud_enabled() && !FeatureFlag::AvatarInTabBar.is_enabled() {
         menu_items.push(updateable_custom_item_without_checkmark(
             CustomAction::ToggleResourceCenter,
             ctx,
