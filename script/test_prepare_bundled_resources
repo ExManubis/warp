@@ -52,3 +52,14 @@ if [ -e "$SKIPPED_DESTINATION/settings_schema.json" ]; then
   echo "Expected no settings schema to be written when SKIP_SETTINGS_SCHEMA=1." >&2
   exit 1
 fi
+
+# Bundles fail if ADDITIONAL_LICENSES points at a missing file (NO_LICENSES=1
+# skips that loop, so check the paths here).
+while IFS= read -r entry; do
+  license_path="${entry##*|}"
+  if [ ! -f "$WORKSPACE_ROOT/$license_path" ]; then
+    echo "Missing additional license file: $license_path" >&2
+    exit 1
+  fi
+done < <(sed -n 's/^[[:space:]]*"\([^"|]*|[^"|]*|[^"]*\)"/\1/p' \
+  "$WORKSPACE_ROOT/script/prepare_bundled_resources")
