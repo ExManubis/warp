@@ -21644,14 +21644,22 @@ impl Workspace {
         .finish()
     }
 
+    fn avatar_button_tooltip(
+        is_user_menu_open: bool,
+        is_anonymous: bool,
+        display_name: String,
+    ) -> Option<String> {
+        (!is_user_menu_open && !is_anonymous).then_some(display_name)
+    }
+
     fn render_avatar_button(&self, appearance: &Appearance, ctx: &AppContext) -> Box<dyn Element> {
-        let tooltip = if self.auth_state.is_anonymous_or_logged_out() {
-            "Settings".to_string()
-        } else {
+        let tooltip = Self::avatar_button_tooltip(
+            self.is_user_menu_open,
+            self.auth_state.is_anonymous_or_logged_out(),
             self.auth_state
                 .username_for_display()
-                .unwrap_or(DEFAULT_USER_DISPLAY_NAME.to_owned())
-        };
+                .unwrap_or(DEFAULT_USER_DISPLAY_NAME.to_owned()),
+        );
 
         let mut button = self
             .render_tab_bar_icon_button(
@@ -21659,7 +21667,7 @@ impl Workspace {
                 icons::Icon::Gear,
                 &self.mouse_states.avatar_icon,
                 WorkspaceAction::ToggleUserMenu,
-                tooltip,
+                tooltip.unwrap_or_default(),
                 None,
                 self.is_user_menu_open,
                 false,
@@ -21882,12 +21890,14 @@ impl Workspace {
             });
             button.build().disable()
         } else {
-            button
-                .with_tooltip(self.render_tab_bar_icon_button_tooltip(
+            if !tool_tip_label_text.is_empty() {
+                button = button.with_tooltip(self.render_tab_bar_icon_button_tooltip(
                     appearance,
                     tool_tip_label_text,
                     tool_tip_sublabel_text,
-                ))
+                ));
+            }
+            button
                 .build()
                 .on_click(move |ctx, _, _| ctx.dispatch_typed_action(action.clone()))
         }
