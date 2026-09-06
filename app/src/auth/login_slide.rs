@@ -1473,4 +1473,3 @@ impl TypedActionView for LoginSlideView {
         }
     }
 }
-

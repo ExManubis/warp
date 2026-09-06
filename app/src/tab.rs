@@ -2019,7 +2019,7 @@ impl<'a> TabComponent<'a> {
             };
         }
 
-        let mut tab = if self.floating_horizontal {
+        let tab = if self.floating_horizontal {
             Container::new(stack)
                 .with_background(background_color)
                 .with_corner_radius(CornerRadius::with_all(Radius::Pixels(FLOATING_CARD_RADIUS)))

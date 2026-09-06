@@ -410,4 +410,3 @@ fn remove_cloud_persisted_settings(app: &mut AppContext) {
         privacy_settings.refresh_to_default();
     });
 }
-

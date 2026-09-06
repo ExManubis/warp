@@ -21,4 +21,3 @@ pub enum AnonymousUserCreationError {
     #[error("Failed to create anonymous user with unknown error")]
     Unknown,
 }
-

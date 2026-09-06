@@ -5662,15 +5662,10 @@ impl SettingsWidget for ApiKeysWidget {
                 } else {
                     let current_user_email = auth_state.user_email().unwrap_or_default();
                     let has_admin_permissions = team.has_admin_permissions(&current_user_email);
-                    let upgrade_url = UserWorkspaces::upgrade_link_for_team(team.uid);
                     if has_admin_permissions {
-                        vec![
-                            FormattedTextFragment::hyperlink(
-                                "Upgrade to the Build plan",
-                                upgrade_url,
-                            ),
-                            FormattedTextFragment::plain_text(" to use your own API keys."),
-                        ]
+                        vec![FormattedTextFragment::plain_text(
+                            "Upgrade to the Build plan to use your own API keys.",
+                        )]
                     } else {
                         vec![FormattedTextFragment::plain_text(
                             "Ask your team's admin to upgrade to the Build plan to use your own API keys.",
@@ -5688,12 +5683,9 @@ impl SettingsWidget for ApiKeysWidget {
                     FormattedTextFragment::plain_text(" to use your own API keys."),
                 ]
             } else {
-                let user_id = auth_state.user_id().unwrap_or_default();
-                let upgrade_url = UserWorkspaces::upgrade_link(user_id);
-                vec![
-                    FormattedTextFragment::hyperlink("Upgrade to the Build plan", upgrade_url),
-                    FormattedTextFragment::plain_text(" to use your own API keys."),
-                ]
+                vec![FormattedTextFragment::plain_text(
+                    "Upgrade to the Build plan to use your own API keys.",
+                )]
             };
 
             let upgrade_text_element = FormattedTextElement::new(

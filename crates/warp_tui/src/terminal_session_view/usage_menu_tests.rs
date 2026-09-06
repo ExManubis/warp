@@ -7,7 +7,6 @@ use warpui_core::elements::tui::{
 
 use super::model::{TuiUsageCreditBar, TuiUsagePayAsYouGo, TuiUsageSnapshot};
 use super::*;
-use crate::link::TuiLink;
 use crate::tui_builder::TuiUiBuilder;
 
 const WIDTH: u16 = 110;
@@ -30,15 +29,7 @@ fn render_buffer(app: &App, element: &mut dyn TuiElement, size: TuiSize) -> TuiB
 fn render_snapshot(snapshot: TuiUsageSnapshot) -> Vec<String> {
     App::test((), |app| async move {
         app.add_singleton_model(|_| Appearance::mock());
-        let mut element = app.read(|ctx| {
-            render(
-                &snapshot,
-                &TuiLink::default(),
-                &TuiLink::default(),
-                "https://example.com/upgrade",
-                &TuiUiBuilder::from_app(ctx),
-            )
-        });
+        let mut element = app.read(|ctx| render(&snapshot, &TuiUiBuilder::from_app(ctx)));
         render_buffer(&app, element.as_mut(), TuiSize::new(WIDTH, 40))
             .to_lines()
             .into_iter()
@@ -66,7 +57,6 @@ fn snapshot(pay_as_you_go: TuiUsagePayAsYouGo) -> TuiUsageSnapshot {
             "Auto-reload 500 credits July 31 at 5:00pm",
         )),
         pay_as_you_go: Some(pay_as_you_go),
-        manage_billing_url: Some("https://example.com/billing".to_owned()),
     }
 }
 
@@ -83,7 +73,7 @@ fn renders_account_usage_summary() {
     }));
 
     assert!(rendered[0].starts_with(" ◔ Usage"));
-    assert!(rendered[0].ends_with("Plan: Build | Team: Product Eng | Manage billing and usage"));
+    assert!(rendered[0].ends_with("Plan: Build | Team: Product Eng"));
     assert!(rendered.iter().any(|line| line.contains("Base credits")));
     assert!(rendered.iter().any(|line| line.contains("Add-on credits")));
     assert!(
@@ -94,7 +84,7 @@ fn renders_account_usage_summary() {
     assert!(
         rendered
             .iter()
-            .any(|line| line.contains("Buy more credits or upgrade plan (ctrl+o)"))
+            .all(|line| !line.contains("Manage billing") && !line.contains("Buy more credits"))
     );
     assert!(rendered.iter().any(|line| line == "Esc to exit"));
 }
