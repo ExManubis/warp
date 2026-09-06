@@ -1,4 +1,4 @@
-use anyhow::{Context as _, Result};
+use anyhow::{Context as _, Result, bail};
 use serde::de::DeserializeOwned;
 use warp_core::channel::ChannelState;
 use warp_errors::{ErrorExt, register_error};
@@ -32,6 +32,9 @@ impl BaseClient {
     /// Unlike [`get_public_api`], this does not attempt JSON deserialization on the
     /// response body, allowing the caller to decode it however they need.
     pub async fn get_public_api_response(&self, path: &str) -> Result<http_client::Response> {
+        if !ChannelState::cloud_enabled() {
+            bail!("Warp cloud is disabled");
+        }
         let auth_token = self
             .get_or_refresh_access_token()
             .await

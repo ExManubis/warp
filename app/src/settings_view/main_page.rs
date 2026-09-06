@@ -636,6 +636,10 @@ impl SettingsWidget for AccountWidget {
         "account sign up"
     }
 
+    fn should_render(&self, _app: &AppContext) -> bool {
+        ChannelState::cloud_enabled()
+    }
+
     fn render(
         &self,
         view: &Self::View,
@@ -672,6 +676,10 @@ impl SettingsWidget for DividerWidget {
         ""
     }
 
+    fn should_render(&self, _app: &AppContext) -> bool {
+        ChannelState::cloud_enabled()
+    }
+
     fn render(
         &self,
         _view: &Self::View,
@@ -702,9 +710,10 @@ impl SettingsWidget for SettingsSyncWidget {
     }
 
     fn should_render(&self, app: &AppContext) -> bool {
-        !AuthStateProvider::as_ref(app)
-            .get()
-            .is_anonymous_or_logged_out()
+        ChannelState::cloud_enabled()
+            && !AuthStateProvider::as_ref(app)
+                .get()
+                .is_anonymous_or_logged_out()
     }
 
     fn render(
@@ -791,9 +800,10 @@ impl SettingsWidget for EarnRewardsWidget {
     }
 
     fn should_render(&self, app: &AppContext) -> bool {
-        !AuthStateProvider::as_ref(app)
-            .get()
-            .is_anonymous_or_logged_out()
+        ChannelState::cloud_enabled()
+            && !AuthStateProvider::as_ref(app)
+                .get()
+                .is_anonymous_or_logged_out()
     }
 
     fn render(
@@ -1203,9 +1213,10 @@ impl SettingsWidget for LogoutWidget {
     }
 
     fn should_render(&self, app: &AppContext) -> bool {
-        !AuthStateProvider::as_ref(app)
-            .get()
-            .is_anonymous_or_logged_out()
+        ChannelState::cloud_enabled()
+            && !AuthStateProvider::as_ref(app)
+                .get()
+                .is_anonymous_or_logged_out()
     }
 
     fn render(

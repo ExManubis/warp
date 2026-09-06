@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, bail};
 use http::StatusCode;
 use instant::Duration;
+use warp_core::channel::ChannelState;
 use warp_errors::report_error;
 use warp_graphql::client::{GraphQLError, Operation, RequestOptions};
 use warpui_core::r#async::BoxFuture;
@@ -23,6 +24,9 @@ where
     O: Operation<QF> + Send + 'a,
 {
     Box::pin(async move {
+        if !ChannelState::cloud_enabled() {
+            bail!("Warp cloud is disabled");
+        }
         let options = base_client.graphql_request_options(timeout).await?;
         send_graphql_request_with_options(base_client, operation, options).await
     })

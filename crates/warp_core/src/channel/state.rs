@@ -208,8 +208,17 @@ impl ChannelState {
 
     /// Whether this build has a Warp server config and can therefore contact
     /// Warp-hosted endpoints. Local-only builds ship with `server_config: None`.
+    ///
+    /// Test builds always report enabled because [`server_root_url`] already
+    /// redirects to the in-process mock server.
     pub fn cloud_enabled() -> bool {
-        CHANNEL_STATE.lock().config.cloud_enabled()
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "test-util")] {
+                true
+            } else {
+                CHANNEL_STATE.lock().config.cloud_enabled()
+            }
+        }
     }
 
     pub fn firebase_api_key() -> Cow<'static, str> {
