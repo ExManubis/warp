@@ -56,7 +56,7 @@ SolidCompression=yes
 WizardStyle=modern
 WizardSmallImageFile="installer-images\warp-logo.bmp"
 WizardImageFile="installer-images\warp-banner.bmp"
-SetupIconFile="..\..\app\channels\{#ReleaseChannel}\icon\no-padding\icon.ico"
+SetupIconFile="..\..\app\icon\no-padding\icon.ico"
 CloseApplications=no
 RestartApplications=no
 SetupMutex=Local\WarpAgentCLI{#ReleaseChannel}Setup
@@ -79,7 +79,7 @@ Source: "{#WindowsAssetsDir}\vcruntime140.dll"; DestDir: "{app}\versions\{#MyApp
 Source: "{#WindowsAssetsDir}\vcruntime140_1.dll"; DestDir: "{app}\versions\{#MyAppVersion}"; Check: ShouldInstallVersion
 Source: "{#WindowsAssetsDir}\msvcp140.dll"; DestDir: "{app}\versions\{#MyAppVersion}"; Check: ShouldInstallVersion
 Source: "{#TargetProfileDir}\resources\*"; DestDir: "{app}\versions\{#MyAppVersion}\resources"; Flags: recursesubdirs createallsubdirs; Check: ShouldInstallVersion
-Source: "..\..\app\channels\{#ReleaseChannel}\icon\no-padding\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\app\icon\no-padding\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Registry]
 Root: HKA; Subkey: "{#ProductRegistryKey}"; ValueType: string; ValueName: "InstallRoot"; ValueData: "{app}"; Flags: uninsdeletekey

@@ -16,8 +16,7 @@ use warpui::elements::{
     CrossAxisAlignment, DragAxis, Draggable, DraggableState, DropTarget, Element, Empty, Fill,
     Flex, Hoverable, MainAxisAlignment, MainAxisSize, MouseStateHandle, OffsetPositioning,
     ParentAnchor, ParentElement, ParentOffsetBounds, Radius, Rect, SavePosition, Shrinkable,
-    SizeConstraintCondition,
-    SizeConstraintSwitch, Stack, Text,
+    SizeConstraintCondition, SizeConstraintSwitch, Stack, Text,
 };
 use warpui::fonts::Weight;
 use warpui::keymap::Keystroke;

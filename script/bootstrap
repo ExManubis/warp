@@ -56,7 +56,7 @@ print_bootstrap_preview() {
 
   if [[ "${platform}" = "macOS" ]]; then
     echo "  - Configure Xcode as the active developer directory."
-    echo "  - Install or update Cargo, Homebrew, PowerShell, Docker, gcloud, and related development tools."
+    echo "  - Install or update Cargo, Homebrew, Docker, gcloud, and related development tools."
     echo "  - Add the aarch64-apple-darwin Rust target."
   elif [[ "${platform}" = "Linux" ]]; then
     echo "  - Update apt package metadata."

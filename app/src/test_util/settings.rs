@@ -29,7 +29,6 @@ pub fn initialize_settings_for_tests_with_mode(
     use crate::ai::cloud_agent_settings::CloudAgentSettings;
     use crate::drive::settings::WarpDriveSettings;
     use crate::search::command_search::settings::CommandSearchSettings;
-    use crate::settings::app_icon::AppIconSettings;
     use crate::settings::manager::SettingsManager;
     use crate::settings::{
         AISettings, AccessibilitySettings, AliasExpansionSettings, AppEditorSettings,
@@ -74,7 +73,6 @@ pub fn initialize_settings_for_tests_with_mode(
     CloudPreferencesSettings::register(app);
     CommandSearchSettings::register(app);
     DebugSettings::register(app);
-    AppIconSettings::register(app);
     EmacsBindingsSettings::register(app);
 
     #[cfg(feature = "local_fs")]
