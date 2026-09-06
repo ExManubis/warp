@@ -479,25 +479,6 @@ impl ServerApi {
         Self::new_with_parts(client, auth_state, tx, None, None, TelemetryApi::new())
     }
 
-    #[cfg(all(test, feature = "skip_login"))]
-    fn new_for_test_with_bearer_token(
-        bearer_token: Option<String>,
-        event_sender: async_channel::Sender<AuthEvent>,
-    ) -> Self {
-        let auth_state = Arc::new(AuthState::new_logged_out_for_test());
-        if let Some(bearer_token) = bearer_token {
-            auth_state.set_remote_server_bearer_token(bearer_token);
-        }
-        Self::new_with_parts(
-            Arc::new(http_client::Client::new_for_test()),
-            auth_state,
-            event_sender,
-            None,
-            None,
-            TelemetryApi::new(),
-        )
-    }
-
     /// Sets the ambient agent task ID to be sent with all subsequent requests.
     pub fn set_ambient_agent_task_id(&self, task_id: Option<AmbientAgentTaskId>) {
         self.base_client

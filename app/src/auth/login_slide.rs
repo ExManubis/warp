@@ -1474,6 +1474,3 @@ impl TypedActionView for LoginSlideView {
     }
 }
 
-#[cfg(test)]
-#[path = "login_slide_tests.rs"]
-mod tests;

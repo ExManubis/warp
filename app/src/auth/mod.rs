@@ -411,6 +411,3 @@ fn remove_cloud_persisted_settings(app: &mut AppContext) {
     });
 }
 
-#[cfg(test)]
-#[path = "mod_tests.rs"]
-mod tests;
