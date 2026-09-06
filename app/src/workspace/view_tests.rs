@@ -5467,7 +5467,31 @@ mod simplified_wasm_tab_bar {
                     .contains("Workspace_CloudConversationWebViewer"),
                 "deep-linked conversation viewers must keep the web-viewer context so the command palette stays disabled"
             );
-        });
+            });
         });
     }
+}
+
+#[test]
+fn hides_avatar_button_tooltip_when_user_menu_is_open() {
+    assert_eq!(
+        Workspace::avatar_button_tooltip(true, false, "alice".to_string()),
+        None
+    );
+}
+
+#[test]
+fn hides_avatar_button_tooltip_when_anonymous() {
+    assert_eq!(
+        Workspace::avatar_button_tooltip(false, true, "alice".to_string()),
+        None
+    );
+}
+
+#[test]
+fn shows_display_name_tooltip_when_logged_in_and_menu_closed() {
+    assert_eq!(
+        Workspace::avatar_button_tooltip(false, false, "alice".to_string()),
+        Some("alice".to_string())
+    );
 }
