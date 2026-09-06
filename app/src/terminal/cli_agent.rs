@@ -179,6 +179,9 @@ impl CLIAgent {
             CLIAgent::Vibe => &["vibe", "vibe-acp"],
             CLIAgent::Antigravity => &["agy"],
             CLIAgent::WarpTui => &[
+                "promptty",
+                "promptty-tui",
+                "promptty-integration",
                 "warp",
                 "warp-preview",
                 "warp-dev",

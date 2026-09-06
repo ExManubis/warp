@@ -7,7 +7,6 @@ use anyhow::Context as _;
 use indexmap::IndexMap;
 use settings::Setting as _;
 use uuid::Uuid;
-use warp_core::channel::ChannelState;
 use warp_core::features::FeatureFlag;
 use warp_core::user_preferences::GetUserPreferences;
 use warp_errors::report_error;
@@ -468,7 +467,7 @@ impl AIExecutionProfilesModel {
         // then the profile is deleted when initial load returns. To fix that, we listen for the deletion of the default
         // profile and reset the model state when that happens.
         if !uses_file_backed_profiles
-            && ChannelState::channel().is_dogfood()
+            && cfg!(debug_assertions)
             && let DefaultProfileState::Synced { id } = &default_profile_state
         {
             let sync_id_of_default_profile = *profile_id_to_sync_id

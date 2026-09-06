@@ -272,23 +272,19 @@ fn rejects_unmanaged_exe_paths() {
 }
 
 #[test]
-fn uses_channel_specific_download_endpoints() {
+fn download_endpoint_is_shared() {
     assert_eq!(
-        download_endpoint(Channel::Stable),
+        download_endpoint(Channel::Release),
         "/download/agent-cli/artifact"
     );
     assert_eq!(
-        download_endpoint(Channel::Preview),
-        "/download/agent-cli-preview/artifact"
-    );
-    assert_eq!(
-        download_endpoint(Channel::Dev),
-        "/download/agent-cli-dev/artifact"
+        download_endpoint(Channel::Integration),
+        "/download/agent-cli/artifact"
     );
 }
 
 #[test]
-fn uses_channel_specific_tui_versions() {
+fn latest_version_errors_without_release_artifacts() {
     fn channel_version(version: &str, tui_version: Option<&str>) -> ChannelVersion {
         let mut version_info = VersionInfo::new(version.to_owned());
         version_info.tui_version = tui_version.map(ToOwned::to_owned);
@@ -302,33 +298,8 @@ fn uses_channel_specific_tui_versions() {
         changelogs: None,
     };
 
-    assert_eq!(
-        latest_version_for(Channel::Dev, &versions).unwrap(),
-        "dev_tui"
-    );
-    assert_eq!(
-        latest_version_for(Channel::Preview, &versions).unwrap(),
-        "preview_tui"
-    );
-    assert_eq!(
-        latest_version_for(Channel::Stable, &versions).unwrap(),
-        "stable_tui"
-    );
-}
-
-#[test]
-fn falls_back_to_app_version_when_tui_version_is_omitted() {
-    let versions = ChannelVersions {
-        dev: ChannelVersion::new(VersionInfo::new("dev_app".to_owned())),
-        preview: ChannelVersion::new(VersionInfo::new("preview_app".to_owned())),
-        stable: ChannelVersion::new(VersionInfo::new("stable_app".to_owned())),
-        changelogs: None,
-    };
-
-    assert_eq!(
-        latest_version_for(Channel::Preview, &versions).unwrap(),
-        "preview_app"
-    );
+    assert!(latest_version_for(Channel::Release, &versions).is_err());
+    assert!(latest_version_for(Channel::Integration, &versions).is_err());
 }
 #[test]
 fn complete_versions_require_real_binary_and_resources() {

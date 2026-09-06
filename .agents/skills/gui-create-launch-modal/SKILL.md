@@ -53,12 +53,13 @@ Add to `crates/warp_features/src/lib.rs`:
 <YourModalName>LaunchModal,
 ```
 
-Enable for dogfood:
+Enable it for local debug builds by adding it to `DEBUG_FLAGS`, or ship it by adding the matching Cargo feature to `default` in `app/Cargo.toml` (and `enabled_features()`). There is no dogfood channel array.
 
 ```rust
-pub const DOGFOOD_FLAGS: &[FeatureFlag] = &[
+pub const DEBUG_FLAGS: &[FeatureFlag] = &[
+    FeatureFlag::DebugMode,
+    FeatureFlag::RuntimeFeatureFlags,
     FeatureFlag::<YourModalName>LaunchModal,
-    // ...
 ];
 ```
 

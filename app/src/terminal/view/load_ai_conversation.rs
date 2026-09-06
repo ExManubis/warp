@@ -7,7 +7,6 @@ use ai::document::DEFAULT_PLANNING_DOCUMENT_TITLE;
 use itertools::Itertools;
 use prost::Message;
 use vec1::Vec1;
-use warp_core::channel::ChannelState;
 use warp_core::features::FeatureFlag;
 use warp_errors::report_error;
 use warp_multi_agent_api as api;
@@ -1091,7 +1090,7 @@ impl TerminalView {
     /// Loads an agent mode conversation from a debug link in the clipboard.
     /// This is used for debugging purposes only when in dogfood channel state.
     pub fn load_agent_mode_conversation(&mut self, ctx: &mut ViewContext<Self>) {
-        if !ChannelState::channel().is_dogfood() {
+        if !cfg!(debug_assertions) {
             return;
         }
 

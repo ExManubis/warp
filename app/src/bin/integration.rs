@@ -5,7 +5,7 @@ use warp_core::AppId;
 use warp_core::channel::{Channel, ChannelConfig, ChannelState, OzConfig, WarpServerConfig};
 
 #[derive(Debug, Default, Parser, Clone)]
-#[command(name = "warp-integration")]
+#[command(name = "promptty-integration")]
 #[clap(args_conflicts_with_subcommands = true)]
 pub struct Args {
     #[command(subcommand)]
@@ -18,15 +18,15 @@ pub fn main() -> Result<()> {
         ChannelConfig {
             app_id: AppId::new(
                 "dev",
-                "warp",
+                "promptty",
                 if cfg!(target_os = "macos") {
-                    "Warp-Integration"
+                    "PrompTTY-Integration"
                 } else {
-                    "WarpIntegration"
+                    "PrompTTYIntegration"
                 },
             ),
-            logfile_name: "warp_integration.log".into(),
-            server_config: WarpServerConfig {
+            logfile_name: "promptty-integration.log".into(),
+            server_config: Some(WarpServerConfig {
                 firebase_auth_api_key: "".into(),
                 // Use an IP in the IANA testing range, with the TCP discard port, to
                 // black-hole server traffic.
@@ -34,13 +34,13 @@ pub fn main() -> Result<()> {
                 rtc_server_url: "ws://192.0.2.0:9/graphql/v2".into(),
                 session_sharing_server_url: None,
                 iap_config: None,
-            },
-            oz_config: OzConfig {
+            }),
+            oz_config: Some(OzConfig {
                 // Use an IP in the IANA testing range, with the TCP discard port, to
                 // black-hole server traffic.
                 oz_root_url: "http://192.0.2.0:9".into(),
                 workload_audience_url: None,
-            },
+            }),
             telemetry_config: None,
             crash_reporting_config: None,
             autoupdate_config: None,

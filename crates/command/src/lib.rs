@@ -11,8 +11,6 @@ pub mod r#async;
 pub mod blocking;
 #[cfg(unix)]
 pub mod unix;
-#[cfg(windows)]
-pub mod windows;
 pub mod wsl;
 
 pub use std::process::{ExitStatus, Output, Stdio};

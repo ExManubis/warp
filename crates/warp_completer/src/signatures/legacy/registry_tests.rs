@@ -40,7 +40,7 @@ fn test_all_known_signature_names_are_within_the_length_cap() {
         track_longest_name(&signature, &mut longest);
     }
 
-    for channel in [Channel::Stable, Channel::Preview, Channel::Dev] {
+    for channel in [Channel::Release] {
         let mut clap_cmd = <warp_cli::Args as clap::CommandFactory>::command();
         let signature = crate::signatures::clap::signature_from_clap_command(
             &mut clap_cmd,

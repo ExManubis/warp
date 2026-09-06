@@ -35,7 +35,6 @@ use session_sharing_protocol::common::ParticipantId;
 use task::TaskId;
 pub use telemetry::AIIdentifiers;
 use uuid::Uuid;
-use warp_core::channel::ChannelState;
 use warp_core::features::FeatureFlag;
 use warp_editor::render::model::LineCount;
 use warp_multi_agent_api::{AgentEvent, AgentType, diff_hunk as diff_hunk_api};
@@ -790,7 +789,7 @@ impl RenderableAIError {
     /// don't surface an alarming error; dogfood builds (Local/Dev) keep the old, more
     /// aggressive behavior so developers still see every transport failure.
     pub fn should_suppress_during_recovery(&self) -> bool {
-        self.will_attempt_resume() && !ChannelState::channel().is_dogfood()
+        self.will_attempt_resume()
     }
 
     /// Constructs a generic [`RenderableAIError::Other`] from a message.

@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use warp_core::channel::ChannelState;
+use warp_core::context_flag::ContextFlag;
 pub use warp_core::features::*;
 
 /// Mark all features which should be enabled on the current channel as enabled.
@@ -9,6 +10,9 @@ pub fn init_feature_flags() {
     for flag in enabled_features() {
         flag.set_enabled(true);
     }
+    if !ChannelState::cloud_enabled() {
+        ContextFlag::disable_warp_cloud_flags();
+    }
     mark_initialized();
 }
 
@@ -16,11 +20,6 @@ pub fn init_feature_flags() {
 fn enabled_features() -> HashSet<FeatureFlag> {
     // Enable features overridden for the given channel.
     let mut flags = ChannelState::additional_features();
-
-    // Enable flags for release builds, if appropriate.
-    if ChannelState::is_release_bundle() {
-        flags.extend(RELEASE_FLAGS);
-    }
 
     flags.extend([
         #[cfg(feature = "autoupdate")]
@@ -532,6 +531,10 @@ fn enabled_features() -> HashSet<FeatureFlag> {
         #[cfg(feature = "stored_screenshots")]
         FeatureFlag::StoredScreenshots,
     ]);
+
+    if !ChannelState::cloud_enabled() {
+        flags.retain(|flag| !flag.requires_warp_cloud());
+    }
 
     flags
 }

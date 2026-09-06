@@ -24,7 +24,6 @@ use settings::{Setting, ToggleableSetting};
 use strum::IntoEnumIterator;
 #[cfg(not(target_family = "wasm"))]
 use uuid::Uuid;
-use warp_core::channel::ChannelState;
 use warp_core::context_flag::ContextFlag;
 use warp_core::features::FeatureFlag;
 use warp_core::ui::theme::color::internal_colors;
@@ -3129,7 +3128,7 @@ fn is_shared_block_title_generation_toggleable(
             .is_some_and(|team| team.billing_metadata.customer_type == CustomerType::Enterprise)
             // Override the enterprise check for dogfood builds, as our dogfood team
             // is an enterprise team.
-            || ChannelState::channel().is_dogfood())
+            || cfg!(debug_assertions))
 }
 
 fn is_git_operations_autogen_toggleable(app: &AppContext) -> bool {

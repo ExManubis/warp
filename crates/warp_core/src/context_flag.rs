@@ -118,6 +118,13 @@ impl ContextFlag {
         disable_flag(Self::ShowMCPServers);
     }
 
+    /// Turns off Warp-account behaviors for local-only builds.
+    pub fn disable_warp_cloud_flags() {
+        disable_flag(Self::CreateSharedSession);
+        disable_flag(Self::ShowRewardModal);
+        disable_flag(Self::PromptForVersionUpdates);
+    }
+
     pub fn set_conversation_only() {
         disable_flag(Self::CreateSharedSession);
         disable_flag(Self::CreateNewSession);

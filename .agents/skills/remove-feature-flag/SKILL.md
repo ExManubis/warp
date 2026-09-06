@@ -53,16 +53,7 @@ Remove the conditional compilation directive:
 // YourFeatureName,
 ```
 
-### 4. Remove from DOGFOOD_FLAGS/PREVIEW_FLAGS/RELEASE_FLAGS
-If the flag was listed in any of these arrays in `features.rs`, remove it:
-
-```rust
-pub const DOGFOOD_FLAGS: &[FeatureFlag] = &[
-    // Remove FeatureFlag::YourFeatureName,
-];
-```
-
-### 5. Remove all runtime checks and dead code
+### 4. Remove all runtime checks and dead code
 Find and remove all `FeatureFlag::YourFeatureName.is_enabled()` checks throughout the codebase:
 
 **Before:**

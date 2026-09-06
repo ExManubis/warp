@@ -61,21 +61,8 @@ fn default_settings() -> LocalControlSettings {
 }
 
 #[test]
-fn default_mode_is_enabled_only_on_dogfood_channels() {
-    assert_eq!(
-        default_mode_for_channel(Channel::Dev),
-        LocalControlMode::Enabled
-    );
-    assert_eq!(
-        default_mode_for_channel(Channel::Local),
-        LocalControlMode::Enabled
-    );
-    for channel in [
-        Channel::Stable,
-        Channel::Preview,
-        Channel::Oss,
-        Channel::Integration,
-    ] {
+fn default_mode_is_disabled_on_all_channels() {
+    for channel in [Channel::Release, Channel::Integration] {
         assert_eq!(
             default_mode_for_channel(channel),
             LocalControlMode::Disabled,

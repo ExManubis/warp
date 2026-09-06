@@ -38,12 +38,7 @@ pub fn init_cocoa_sentry() {
         let environment = NSString::from_str(environment_name);
         let release = NSString::from_str(release_version());
         unsafe {
-            startSentry(
-                &dsn,
-                &environment,
-                &release,
-                ChannelState::channel().is_dogfood(),
-            );
+            startSentry(&dsn, &environment, &release, cfg!(debug_assertions));
         }
     });
 }

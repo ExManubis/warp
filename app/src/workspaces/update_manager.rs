@@ -17,6 +17,7 @@ use super::user_workspaces::{
 use super::workspace::WorkspaceUid;
 use crate::ai::request_usage_model::AIRequestUsageModel;
 use crate::auth::AuthStateProvider;
+use crate::channel::ChannelState;
 use crate::cloud_object::CloudObjectEventEntrypoint;
 use crate::network::{NetworkStatus, NetworkStatusEvent, NetworkStatusKind};
 use crate::persistence::ModelEvent;
@@ -137,6 +138,9 @@ impl TeamUpdateManager {
     /// Starts a periodic poll for workspace metadata changes, if there isn't already
     /// an existing poll queued up.
     pub fn start_polling_for_workspace_metadata_updates(&mut self, ctx: &mut ModelContext<Self>) {
+        if !ChannelState::cloud_enabled() {
+            return;
+        }
         let is_online = NetworkStatus::as_ref(ctx).is_online();
         if !self.should_poll_for_workspace_metadata_updates && is_online {
             self.should_poll_for_workspace_metadata_updates = true;
@@ -153,7 +157,7 @@ impl TeamUpdateManager {
     /// Returns a oneshot Receiver that resolves when the refresh completes (success or final failure).
     pub fn refresh_workspace_metadata(&mut self, ctx: &mut ModelContext<Self>) -> Receiver<()> {
         // Skip the refresh when logged out to avoid noisy auth errors.
-        if !AuthStateProvider::as_ref(ctx).get().is_logged_in() {
+        if !ChannelState::cloud_enabled() || !AuthStateProvider::as_ref(ctx).get().is_logged_in() {
             let (tx, rx) = oneshot::channel::<()>();
             let _ = tx.send(());
             return rx;

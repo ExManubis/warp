@@ -822,16 +822,11 @@ mod origin_tests {
     use super::*;
 
     #[test]
-    fn server_and_rtc_origins_match() {
-        // Derive the expected origins from `ChannelState` so the assertion holds
-        // regardless of which channel config the test build resolves to.
-        let server = reqwest::Url::parse(ChannelState::server_root_url().as_ref()).unwrap();
-        assert!(is_warp_server_origin(&server.join("/graphql/v2").unwrap()));
-
-        let rtc = reqwest::Url::parse(ChannelState::rtc_http_url().as_ref()).unwrap();
-        assert!(is_warp_server_origin(
-            &rtc.join("/api/v1/agent/events/stream").unwrap()
-        ));
+    fn local_only_build_does_not_treat_warp_dev_as_server_origin() {
+        assert!(!ChannelState::cloud_enabled());
+        assert!(ChannelState::server_root_url().is_empty());
+        let url = reqwest::Url::parse("https://app.warp.dev/graphql/v2").unwrap();
+        assert!(!is_warp_server_origin(&url));
     }
 
     #[test]

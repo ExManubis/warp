@@ -1,6 +1,5 @@
 #[cfg_attr(macos, path = "mac/mod.rs")]
 #[cfg_attr(linux, path = "linux/mod.rs")]
-#[cfg_attr(windows, path = "windows/mod.rs")]
 #[cfg(not(noop))]
 mod imp;
 // Env-var-gated mock recorder for exercising the recording UI on macOS,
@@ -11,7 +10,7 @@ mod noop;
 mod overlay;
 #[cfg(any(macos, linux))]
 mod recording_metadata;
-#[cfg(any(macos, linux, windows))]
+#[cfg(any(macos, linux))]
 mod screenshot_utils;
 #[cfg(any(macos, linux))]
 mod thumbnail;

@@ -22,11 +22,11 @@ use directories::BaseDirs;
 use crate::AppId;
 use crate::channel::{Channel, ChannelState};
 
-/// The name of the directory in which to put non-global Warp-specific files.
+/// The name of the directory in which to put non-global PrompTTY-specific files.
 ///
 /// This should be used, for example, as the base directory under which
-/// repository workflows would be stored (in "./.warp/workflows").
-pub const WARP_CONFIG_DIR: &str = ".warp";
+/// repository workflows would be stored (in "./.promptty/workflows").
+pub const WARP_CONFIG_DIR: &str = ".promptty";
 
 /// The name of the folder that stores Warp execution logs and network logs.
 /// This is currently only used on Windows to maintain backwards compatibility.
@@ -34,20 +34,15 @@ pub const WARP_LOGS_DIR: &str = "logs";
 
 fn base_warp_config_dir_name() -> String {
     match ChannelState::channel() {
-        // Preview shares the same directory as Stable for backward
-        // compatibility — existing users already have config in `.warp`.
-        Channel::Stable | Channel::Preview => WARP_CONFIG_DIR.to_owned(),
-        Channel::Oss => format!("{WARP_CONFIG_DIR}-oss"),
-        Channel::Dev => format!("{WARP_CONFIG_DIR}-dev"),
+        Channel::Release => WARP_CONFIG_DIR.to_owned(),
         Channel::Integration => format!("{WARP_CONFIG_DIR}-integration"),
-        Channel::Local => format!("{WARP_CONFIG_DIR}-local"),
     }
 }
 
 /// Returns the home-relative Warp config directory name for the current channel and data profile.
 ///
-/// This preserves the historical `.warp*` directory shape while still isolating dev, local,
-/// integration, oss, and optional development profiles.
+/// This preserves the historical home-directory config shape while isolating
+/// Release, Integration, and optional development profiles.
 pub fn warp_home_config_dir_name() -> String {
     let base_dir_name = base_warp_config_dir_name();
 
@@ -61,7 +56,7 @@ pub fn warp_home_config_dir_name() -> String {
 /// Returns the home-relative Warp config directory for the current channel and data profile.
 ///
 /// Unlike [`data_dir`] and [`config_local_dir`] on non-macOS platforms, this intentionally keeps
-/// Warp-authored, user-facing config under a `.warp*` directory in the home directory instead of
+/// user-facing config under a `.promptty*` directory in the home directory instead of
 /// using the platform XDG/AppData project directories.
 pub fn warp_home_config_dir() -> Option<PathBuf> {
     dirs::home_dir().map(|home_dir| home_dir.join(warp_home_config_dir_name()))
@@ -78,16 +73,12 @@ pub fn warp_home_mcp_config_file_path() -> Option<PathBuf> {
 /// Returns the macOS config directory name for the current channel and data
 /// profile.
 ///
-/// Stable uses `.warp`, while other channels include a channel suffix
-/// (e.g., `.warp-dev`, `.warp-local`).
+/// Release uses `.promptty`. Integration uses `.promptty-integration`.
 ///
 /// Development data profiles append a further `-{profile}` suffix. Without it,
 /// every profile of a channel would share this directory — and with it the
 /// public settings in `settings.toml` — defeating the isolation that profiles
 /// already provide for UserDefaults, Application Support, and the keychain.
-///
-/// These suffixes are persisted on disk as directory names and must not be
-/// changed once established, or existing user data will be orphaned.
 #[cfg(target_os = "macos")]
 fn macos_config_dir_name() -> String {
     macos_config_dir_name_for(
@@ -99,12 +90,8 @@ fn macos_config_dir_name() -> String {
 #[cfg(target_os = "macos")]
 fn macos_config_dir_name_for(channel: Channel, data_profile: Option<&str>) -> String {
     let base_dir_name = match channel {
-        Channel::Stable => WARP_CONFIG_DIR.to_owned(),
-        Channel::Preview => format!("{WARP_CONFIG_DIR}-preview"),
-        Channel::Oss => format!("{WARP_CONFIG_DIR}-oss"),
-        Channel::Dev => format!("{WARP_CONFIG_DIR}-dev"),
+        Channel::Release => WARP_CONFIG_DIR.to_owned(),
         Channel::Integration => format!("{WARP_CONFIG_DIR}-integration"),
-        Channel::Local => format!("{WARP_CONFIG_DIR}-local"),
     };
     match data_profile {
         Some(profile) => format!("{base_dir_name}-{profile}"),
@@ -130,18 +117,13 @@ pub fn data_dir() -> PathBuf {
 
 /// Returns the GUI application ID for the current channel.
 ///
-/// Most TUI channel binaries use the same application ID as the GUI. The OSS
-/// TUI is the exception: it uses `WarpTui`, while the corresponding GUI uses
-/// `WarpOss`.
+/// The TUI Release binary uses `PrompTTYTui`, while the GUI uses `PrompTTY`.
+/// Map the TUI ID to the GUI ID so TUI code can resolve GUI config paths.
 #[cfg(any(not(target_os = "macos"), test))]
 fn gui_app_id_for_channel(channel: Channel, current_app_id: AppId) -> AppId {
     match channel {
-        Channel::Oss => AppId::new("dev", "warp", "WarpOss"),
-        Channel::Stable
-        | Channel::Preview
-        | Channel::Dev
-        | Channel::Integration
-        | Channel::Local => current_app_id,
+        Channel::Release => AppId::new("dev", "promptty", "PrompTTY"),
+        Channel::Integration => current_app_id,
     }
 }
 
@@ -171,7 +153,7 @@ pub fn config_local_dir() -> PathBuf {
 /// This differs from [`config_local_dir`] when the active process uses a
 /// frontend-specific application ID, as the OSS TUI does on Linux and Windows.
 /// On macOS, development data profiles do not have an unambiguous corresponding
-/// GUI `.warp*` directory, so this fails closed instead of selecting a source
+/// GUI `.promptty*` directory, so this fails closed instead of selecting a source
 /// profile implicitly.
 pub fn gui_config_local_dir() -> Option<PathBuf> {
     cfg_if! {
@@ -203,36 +185,27 @@ pub fn gui_mcp_config_file_path() -> Option<PathBuf> {
     warp_home_mcp_config_file_path()
 }
 
-/// Returns the macOS config directory name for the TUI front-end (`warp-tui`)
-/// for the current channel.
-///
-/// This mirrors [`macos_config_dir_name`] but under a `.warp_cli*` directory so
-/// the TUI keeps its settings separate from the GUI's `.warp*` directory. Like
-/// the GUI names, these are persisted on disk as directory names and must not be
-/// changed once established.
-#[cfg(target_os = "macos")]
-fn macos_tui_config_dir_name() -> String {
-    macos_config_dir_name().replacen(WARP_CONFIG_DIR, ".warp_cli", 1)
+fn tui_home_config_dir_name() -> String {
+    let base_dir_name = match ChannelState::channel() {
+        Channel::Release => ".promptty-tui".to_owned(),
+        Channel::Integration => ".promptty-tui-integration".to_owned(),
+    };
+    match ChannelState::data_profile() {
+        Some(profile) => format!("{base_dir_name}-{profile}"),
+        None => base_dir_name,
+    }
 }
 
 /// Returns the path to the directory where non-portable configuration files for
 /// the TUI front-end (`warp-tui`) should be stored.
 ///
 /// This is intentionally distinct from [`config_local_dir`] so the GUI and the
-/// TUI never share (and clobber) a settings file. On macOS it is a sibling
-/// `.warp_cli*` directory (mirroring the GUI's `.warp*`); on other platforms —
-/// whose config dirs are already app-id based — it nests under a `cli`
-/// subdirectory of the standard config dir.
+/// TUI never share (and clobber) a settings file. It is always
+/// `~/.promptty-tui*` in the home directory.
 pub fn tui_config_local_dir() -> PathBuf {
-    cfg_if! {
-        if #[cfg(target_os = "macos")] {
-            dirs::home_dir()
-                .unwrap_or_default()
-                .join(macos_tui_config_dir_name())
-        } else {
-            config_local_dir().join("cli")
-        }
-    }
+    dirs::home_dir()
+        .unwrap_or_default()
+        .join(tui_home_config_dir_name())
 }
 
 /// Returns the path to the TUI front-end's global MCP configuration file.
@@ -372,7 +345,7 @@ fn project_dirs_for_app_id(
             // match our Linux package name.
             let base_app_name = match app_id.application_name() {
                 "Warp" => "Warp-Terminal".to_owned(),
-                "WarpOss" => "Warp-Oss".to_owned(),
+                "PrompTTY" => "PrompTTY".to_owned(),
                 other if other.starts_with("Warp") => other.replace("Warp", "Warp-Terminal-"),
                 _ => app_id.application_name().to_owned(),
             };

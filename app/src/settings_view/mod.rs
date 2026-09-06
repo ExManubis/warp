@@ -336,6 +336,36 @@ pub enum SettingsSection {
     WarpCloudAgentAPIKeys,
 }
 
+impl SettingsSection {
+    /// Pages that only make sense when a Warp-hosted account/server exists.
+    fn requires_warp_cloud(self) -> bool {
+        match self {
+            SettingsSection::Account
+            | SettingsSection::BillingAndUsage
+            | SettingsSection::Referrals
+            | SettingsSection::SharedBlocks
+            | SettingsSection::Teams
+            | SettingsSection::WarpDrive
+            | SettingsSection::Warpify
+            | SettingsSection::CloudEnvironments
+            | SettingsSection::WarpCloudAgentAPIKeys => true,
+            SettingsSection::About
+            | SettingsSection::Appearance
+            | SettingsSection::Features
+            | SettingsSection::Keybindings
+            | SettingsSection::Privacy
+            | SettingsSection::Scripting
+            | SettingsSection::WarpAgent
+            | SettingsSection::AgentProfiles
+            | SettingsSection::AgentMCPServers
+            | SettingsSection::Knowledge
+            | SettingsSection::ThirdPartyCLIAgents
+            | SettingsSection::CodeIndexing
+            | SettingsSection::EditorAndCodeReview => false,
+        }
+    }
+}
+
 use std::fmt::{self, Display};
 
 use crate::util::bindings::custom_tag_to_keystroke;
@@ -1459,8 +1489,31 @@ impl SettingsView {
             );
         }
 
+        if !ChannelState::cloud_enabled() {
+            nav_items.retain_mut(|item| match item {
+                SettingsNavItem::Page(section) => !section.requires_warp_cloud(),
+                SettingsNavItem::Umbrella(umbrella) => {
+                    let keep: Vec<_> = umbrella
+                        .subpages
+                        .iter()
+                        .copied()
+                        .filter(|section| !section.requires_warp_cloud())
+                        .collect();
+                    if keep.is_empty() {
+                        false
+                    } else {
+                        *umbrella = SettingsUmbrella::new(umbrella.label, keep);
+                        true
+                    }
+                }
+            });
+        }
+
         let initial_page = match page {
             Some(SettingsSection::Scripting) if !FeatureFlag::WarpControlCli.is_enabled() => {
+                SettingsSection::Account
+            }
+            Some(section) if !ChannelState::cloud_enabled() && section.requires_warp_cloud() => {
                 SettingsSection::Account
             }
             other => other.unwrap_or_default(),

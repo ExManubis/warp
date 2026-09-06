@@ -196,8 +196,8 @@ impl AuthSession {
     }
 
     fn create_oauth_client() -> OAuth2Client {
-        let server_root =
-            Url::parse(&ChannelState::server_root_url()).expect("Server root URL must be valid");
+        let server_root = Url::parse(&ChannelState::server_root_url())
+            .unwrap_or_else(|_| Url::parse("http://127.0.0.1").expect("fallback origin is valid"));
         let token_url = server_root
             .join("/api/v1/oauth/token")
             .expect("Invalid token URL");

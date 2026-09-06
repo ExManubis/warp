@@ -1,7 +1,7 @@
 [package]
 authors = ["Warp Team <dev@warp.dev>"]
-default-run = "warp-oss"
-description = "The cloud-backed terminal for individuals and teams"
+default-run = "promptty"
+description = "The local-first terminal for individuals and teams"
 edition = "2024"
 autobins = false
 name = "warp"
@@ -13,39 +13,17 @@ license.workspace = true
 name = "warp"
 path = "src/lib.rs"
 
-# We define separate targets for each channel (stable, preview, dev) so that we can
-# bundle with its own icon, app name, and channel-specific configuration (such as
-# flag overrides). Otherwise these binaries are exactly identical to our main binary.
+# One binary per remaining channel. Release is the product; Integration is the
+# test harness.
 
 [[bin]]
-name = "warp-oss"
-path = "src/bin/oss.rs"
+name = "promptty"
+path = "src/bin/promptty.rs"
 test = false
 
 [[bin]]
-name = "warp"
-path = "src/bin/local.rs"
-test = false
-
-[[bin]]
-name = "integration"
+name = "promptty-integration"
 path = "src/bin/integration.rs"
-test = false
-
-[[bin]]
-name = "stable"
-path = "src/bin/stable.rs"
-test = false
-
-[[bin]]
-name = "dev"
-path = "src/bin/dev.rs"
-test = false
-
-[[bin]]
-name = "preview"
-path = "src/bin/preview.rs"
-required-features = ["preview_channel"]
 test = false
 
 [dependencies]
@@ -228,7 +206,6 @@ vte.workspace = true
 walkdir.workspace = true
 warp-workflows.workspace = true
 warp_assets.workspace = true
-warp_channel_config.workspace = true
 warp_completer.workspace = true
 warp_core.workspace = true
 warp_errors = { workspace = true, features = ["reqwest-errors"] }
@@ -267,7 +244,6 @@ rmcp.workspace = true
 warp_isolation_platform.workspace = true
 warp_ripgrep.workspace = true
 warp_managed_secrets.workspace = true
-warp_multi_agent_client.workspace = true
 local_control.workspace = true
 hashbrown.workspace = true
 rustc-hash.workspace = true
@@ -303,10 +279,8 @@ winit = { workspace = true }
 wgpu.workspace = true
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
-app-installation-detection.workspace = true
 async-io.workspace = true
 axum.workspace = true
-build_cache.workspace = true
 cloud_object_persistence.workspace = true
 comfy-table = "7.1.4"
 inquire = "0.9.1"
@@ -385,37 +359,12 @@ nix = { workspace = true, features = [
     "mman",
 ] }
 
-[target.'cfg(any(target_os = "linux", target_os = "freebsd", target_os = "windows"))'.dependencies]
+[target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dependencies]
 crash-handler = { version = "0.6.3", optional = true }
 minidumper = { version = "0.8.3", optional = true }
-
-[target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dependencies]
 freedesktop-desktop-entry = "0.5.0"
 x11rb.workspace = true
 zbus.workspace = true
-
-[target.'cfg(target_os = "windows")'.dependencies]
-bytemuck.workspace = true
-windows = { workspace = true, features = [
-    "Wdk_Foundation",
-    "Wdk_Storage_FileSystem",
-    "Win32_Security",
-    "Win32_Storage",
-    "Win32_Storage_FileSystem",
-    "Win32_System_Console",
-    "Win32_System_Diagnostics_Debug",
-    "Win32_System_Environment",
-    "Win32_System_IO",
-    "Win32_System_ProcessStatus",
-    "Win32_System_SystemInformation",
-    "Win32_System_Threading",
-    "Win32_System_LibraryLoader",
-    "Win32_System_WindowsProgramming",
-    "Win32_UI_WindowsAndMessaging",
-] }
-windows-registry = { workspace = true }
-windows-result = { workspace = true }
-winreg.workspace = true
 
 [dev-dependencies]
 ai = { workspace = true, features = ["test-util"] }
@@ -457,9 +406,6 @@ sha2.workspace = true
 tempfile.workspace = true
 walkdir = "2.3.2"
 warp_util.workspace = true
-
-[target.'cfg(windows)'.build-dependencies]
-embed-resource = "3.0"
 
 # Note that we support channel-specific enables for these features
 [features]
@@ -507,12 +453,10 @@ codebase_index_persistence = ["full_source_code_embedding"]
 well_known_mcp_ids = []
 factory_mcp = []
 default = [
+    "skip_login",
     "agent_mode",
     "osc_hyperlinks",
-    "viewing_shared_sessions",
     "render_continuous_block_selections_with_single_border",
-    "shared_with_me",
-    "session_sharing_acls",
     "external_agent_mode_context",
     "shell_selector",
     "minimalist_ui",
@@ -523,19 +467,15 @@ default = [
     "dynamic_workflow_enums",
     "rect_selection",
     "reload_stale_conversation_files",
-    "loginless_conversion",
-    "warp_packs",
     "ai_rules",
     "suggested_rules",
     "default_waterfall_mode",
     "am_workflows",
-    "autoupdate_ui_revamp",
     "render_agent_mode_output_markdown",
     "agent_mode_primary_xml",
     "agent_mode_pre_plan_xml",
     "command_correction_key",
     "kitty_images",
-    "global_ai_analytics_collection",
     "grep_tool",
     "validate_autosuggestions",
     "clear_autosuggestion_on_escape",
@@ -544,20 +484,17 @@ default = [
     "fast_forward_autoexecute_button",
     "image_as_context",
     "command_palette_file_search",
-    "usage_based_pricing",
     "ai_context_menu",
     "at_menu_outside_of_ai_mode",
     "agent_management_view",
     "agent_management_details_view",
     "interactive_conversation_management_view",
-    "shared_block_title_generation",
     "tab_close_button_on_left",
     "ai_resume_button",
     "code_find_replace",
     "ai_context_menu_code",
     "agent_decides_command_execution",
     "linked_code_blocks",
-    "drive_objects_as_context",
     "search_codebase_ui",
     "profiles_design_revamp",
     "multi_profile",
@@ -586,46 +523,28 @@ default = [
     "summarize_conversation_command",
     "inline_code_review",
     "web_search_ui",
-    "agent_shared_sessions",
     "integration_command",
     "artifact_command",
     "conversation_api",
-    "cloud_environments",
-    "create_environment_slash_command",
     "code_review_find",
     "async_find",
-    "shared_session_long_running_commands",
     "mcp_grouped_server_context",
     "fork_from_command",
     "context_window_usage_v2",
     "context_window_usage_breakdown",
-    "ambient_agents_command_line",
-    "ambient_agents_image_upload",
-    "scheduled_ambient_agents",
-    "warp_managed_secrets",
     "v4a_file_diffs",
     "classic_completions",
     "force_classic_completions",
-    "team_api_keys",
     "named_agents",
     "agent_tips",
     "pluggable_notifications",
     "agent_onboarding",
-    "account_first_onboarding",
     "global_search",
-    "cloud_conversations",
     "list_skills",
     "ask_user_question",
     "bundled_skills",
-    "ambient_agents_rtc",
-    "cloud_mode",
-    "cloud_mode_from_local_session",
-    "cloud_mode_image_context",
     "agent_mode_computer_use",
     "background_computer_use",
-    "oz_platform_skills",
-    "oz_identity_federation",
-    "sync_ambient_plans",
     "conversation_artifacts",
     "agent_view",
     "agent_view_block_context",
@@ -633,15 +552,11 @@ default = [
     "inline_slash_commands",
     "inline_history_menu",
     "inline_model_selector",
-    "oz_launch_modal",
-    "open_warp_launch_modal",
-    "orchestration_launch_modal",
     "agent_cli_launch_modal",
     "new_tab_styling",
     "richtext_multiselect",
     "inline_profile_selector",
     "web_fetch_ui",
-    "oz_changelog_updates",
     "skill_arguments",
     "incremental_auto_reload",
     "active_conversation_requires_interaction",
@@ -661,10 +576,8 @@ default = [
     "revert_to_checkpoints",
     "rewind_slash_command",
     "hoa_code_review",
-    "warpify_footer",
     "agent_toolbar_editor",
     "configurable_toolbar",
-    "transfer_control_tool",
     "hoa_notifications",
     "open_code_notifications",
     "cli_agent_rich_input",
@@ -683,30 +596,20 @@ default = [
     "settings_file",
     "directory_tab_colors",
     "git_credential_refresh",
-    "oz_handoff",
-    "handoff_local_cloud",
     "pending_user_query_indicator",
     "queue_slash_command",
     "queued_prompts_v2",
-    "cloud_mode_input_v2",
-    "cloud_mode_setup_v2",
-    "handoff_cloud_cloud",
     "remote_codebase_indexing",
     "solo_user_byok",
     "custom_model_routers",
     "supergrok",
     "gemini_enterprise",
-    "billing_and_usage_page_v2",
     "remote_code_review",
     "git_operations_in_code_review",
     "terminal_lifecycle_recovery",
-    "cloud_runners",
-    "cloud_agent_runners",
     "file_backed_execution_profiles",
     "well_known_mcp_ids",
-    "factory_mcp",
     "wait_for_events_parent_registration",
-    "orchestration_unified_stack",
     "ime_marked_text",
     "ctrl_c_cancels_third_party_harness",
 ]
@@ -757,7 +660,6 @@ agent_mode_evals = [
     "rust-embed/debug-embed",
     "warpui/log_named_telemetry_events",
     "warp_logging/agent_mode_evals",
-    "warp_multi_agent_client/agent_mode_evals",
     "warp_server_client/agent_mode_evals",
 ]
 ambient_agents_command_line = []
@@ -856,6 +758,7 @@ test-util = [
     "warp_terminal/test-util",
     "ai/test-util",
     "warp_server_client/test-util",
+    "warpui/test-util",
 ]
 terminal_lifecycle_recovery = []
 # Feature enabled only when app is compiled for integration tests.
@@ -909,7 +812,6 @@ fast_forward_autoexecute_button = []
 code_find_replace = []
 command_palette_file_search = []
 ai_context_menu_commands = []
-preview_channel = []
 ai_context_menu_code = []
 expand_edit_to_pane = []
 fallback_model_load_output_messaging = []
@@ -1040,55 +942,14 @@ shell_widget_handoff = []
 history_search_ranking_v2 = []
 stored_screenshots = []
 
-[package.metadata.bundle.bin.warp-oss]
+[package.metadata.bundle.bin.promptty]
 category = "public.app-category.developer-tools"
-copyright = "© 2025, Denver Technologies, Inc"
-identifier = "dev.warp.WarpOss"
-name = "PrompTTYOss"
+copyright = "© 2026, Denver Technologies, Inc"
+identifier = "dev.promptty.PrompTTY"
+name = "PrompTTY"
 resources = ["assets/onboarding"]
 icon = ["icon/no-padding/512x512.png", "icon/no-padding/icon.ico"]
-short_description = "The open-source, cloud-backed terminal for individuals and teams."
-
-[package.metadata.bundle.bin.stable]
-category = "public.app-category.developer-tools"
-copyright = "© 2025, Denver Technologies, Inc"
-identifier = "dev.warp.Warp-Stable"
-name = "PrompTTY"
-osx_frameworks = [
-    "frameworks/default/Sentry-Dynamic-WithARM64e.xcframework/macos-arm64_arm64e_x86_64/Sentry.framework",
-]
-resources = ["assets/onboarding"]
-short_description = "The cloud-backed terminal for individuals and teams, stable build."
-
-[package.metadata.bundle.bin.preview]
-category = "public.app-category.developer-tools"
-copyright = "© 2025, Denver Technologies, Inc"
-identifier = "dev.warp.Warp-Preview"
-name = "PrompTTYPreview"
-osx_frameworks = [
-    "frameworks/default/Sentry-Dynamic-WithARM64e.xcframework/macos-arm64_arm64e_x86_64/Sentry.framework",
-]
-resources = ["assets/onboarding"]
-short_description = "The cloud-backed terminal for individuals and teams, feature preview build."
-
-[package.metadata.bundle.bin.dev]
-category = "public.app-category.developer-tools"
-copyright = "© 2025, Denver Technologies, Inc"
-identifier = "dev.warp.Warp-Dev"
-name = "PrompTTYDev"
-osx_frameworks = [
-    "frameworks/dev/Sentry-Dynamic-WithARM64e.xcframework/macos-arm64_arm64e_x86_64/Sentry.framework",
-]
-resources = ["assets/onboarding"]
-short_description = "The cloud-backed terminal for individuals and teams, developer build."
-
-[package.metadata.bundle.bin.warp]
-category = "public.app-category.developer-tools"
-copyright = "© 2025, Denver Technologies, Inc"
-identifier = "dev.warp.Warp-Local"
-name = "PrompTTY"
-resources = ["assets/onboarding"]
-short_description = "The cloud-backed terminal for individuals and teams, developer build."
+short_description = "The local-first terminal for individuals and teams."
 
 [package.metadata.cargo-udeps.ignore]
 normal = ["embed_plist"]

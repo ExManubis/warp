@@ -6,31 +6,12 @@ authors.workspace = true
 publish.workspace = true
 license.workspace = true
 autobins = false
-default-run = "warp-tui-oss"
+default-run = "promptty-tui"
 
-# One binary per channel, mirroring the GUI app's `app/src/bin/*` layout. The
-# OSS bin is the `default-run` so bare `cargo run -p warp_tui` builds without
-# the internal `warp-channel-config` generator; `./script/run-tui` selects the
-# local bin when the generator is available.
+# Release is the product binary. Integration tests use the GUI integration bin.
 [[bin]]
-name = "warp-tui-oss"
-path = "src/bin/oss.rs"
-
-[[bin]]
-name = "warp-tui"
-path = "src/bin/local.rs"
-
-[[bin]]
-name = "warp-tui-dev"
-path = "src/bin/dev.rs"
-
-[[bin]]
-name = "warp-tui-preview"
-path = "src/bin/preview.rs"
-
-[[bin]]
-name = "warp-tui-stable"
-path = "src/bin/stable.rs"
+name = "promptty-tui"
+path = "src/bin/promptty-tui.rs"
 
 [dependencies]
 ai.workspace = true
@@ -76,7 +57,6 @@ warp = { workspace = true, features = [
   "nld_heuristic_v2",
   "tui",
 ] }
-warp_channel_config.workspace = true
 warp_completer.workspace = true
 warp_core.workspace = true
 warp_errors.workspace = true
@@ -98,17 +78,11 @@ uuid.workspace = true
 # enable `wayland-data-control` so native copies work on Wayland sessions
 # (otherwise they fall back to X11 only, and pure-Wayland copies miss the native
 # path). macOS/Windows have no such backend feature and stay text-only.
-[target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
+[target.'cfg(target_os = "macos")'.dependencies]
 arboard = { workspace = true }
 
 [target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dependencies]
 arboard = { workspace = true, features = ["wayland-data-control"] }
-
-# `dunce::simplified` strips the Win32 extended-length (`\\?\`) prefix that
-# `Path::canonicalize` produces, which the Inno Setup updater rejects in its
-# `/DIR` argument. Windows-only, so it stays out of the portable dependency set.
-[target.'cfg(windows)'.dependencies]
-dunce.workspace = true
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["html_reports"] }
@@ -139,10 +113,6 @@ required-features = ["test-util"]
 voice_input = ["warp/voice_input"]
 # Exposes deterministic, production-shaped transcript fixtures to benchmarks.
 test-util = ["warp/test-util", "warp_core/test-util"]
-# Declared so the `warp_channel_config::load_config!` macro's
-# `cfg(feature = "release_bundle")` branch is a known cfg in this crate. Today it
-# stays off and the local bin uses the runtime generator; wiring the embedded
-# config path (a `build.rs`) is phase 2 of the channel setup.
 release_bundle = ["warp/release_bundle"]
 # Enable Rust Sentry reporting without the GUI-only Cocoa SDK.
 crash_reporting = ["warp/crash_reporting"]

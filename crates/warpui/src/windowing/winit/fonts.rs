@@ -6,9 +6,6 @@ mod text_layout;
 
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 mod linux;
-
-#[cfg(target_os = "windows")]
-mod windows;
 use std::any::Any;
 use std::collections::HashMap;
 use std::ops::{DerefMut, Range};

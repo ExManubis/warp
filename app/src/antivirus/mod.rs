@@ -2,8 +2,6 @@
 //! user's machine.
 
 mod telemetry;
-#[cfg(windows)]
-mod windows;
 
 use warpui::{Entity, ModelContext, SingletonEntity};
 

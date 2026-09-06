@@ -12,10 +12,14 @@ pub struct ChannelConfig {
     /// The name of the file to which logs should be written.
     pub logfile_name: Cow<'static, str>,
 
-    /// Configuration for talking to Warp's servers.
-    pub server_config: WarpServerConfig,
-    /// Configuration for Oz/ambient agents.
-    pub oz_config: OzConfig,
+    /// Configuration for talking to Warp's servers, or [`None`] if this build is
+    /// local-only and must not contact Warp-hosted endpoints.
+    #[serde(default)]
+    pub server_config: Option<WarpServerConfig>,
+    /// Configuration for Oz/ambient agents, or [`None`] if cloud agents are
+    /// disabled for this build.
+    #[serde(default)]
+    pub oz_config: Option<OzConfig>,
     /// Configuration for telemetry sending, or [`None`] if telemetry should be
     /// disabled for this build.
     pub telemetry_config: Option<TelemetryConfig>,
@@ -25,6 +29,28 @@ pub struct ChannelConfig {
     pub crash_reporting_config: Option<CrashReportingConfig>,
     /// Configuration for statically-bundled MCP OAuth credentials.
     pub mcp_static_config: Option<McpStaticConfig>,
+}
+
+impl ChannelConfig {
+    /// A channel config with no Warp-hosted services: no server, Oz, telemetry,
+    /// autoupdate, crash reporting, or bundled MCP OAuth credentials.
+    pub fn local_only(app_id: AppId, logfile_name: impl Into<Cow<'static, str>>) -> Self {
+        Self {
+            app_id,
+            logfile_name: logfile_name.into(),
+            server_config: None,
+            oz_config: None,
+            telemetry_config: None,
+            autoupdate_config: None,
+            crash_reporting_config: None,
+            mcp_static_config: None,
+        }
+    }
+
+    /// Whether this config can talk to a Warp-hosted server.
+    pub fn cloud_enabled(&self) -> bool {
+        self.server_config.is_some()
+    }
 }
 
 /// Configuration for GCP Identity-Aware Proxy authentication, present only on staging builds.
@@ -53,18 +79,6 @@ pub struct WarpServerConfig {
     pub iap_config: Option<IapConfig>,
 }
 
-impl WarpServerConfig {
-    pub fn production() -> Self {
-        Self {
-            server_root_url: "https://app.warp.dev".into(),
-            rtc_server_url: "wss://rtc.app.warp.dev/graphql/v2".into(),
-            session_sharing_server_url: Some("wss://sessions.app.warp.dev".into()),
-            firebase_auth_api_key: "AIzaSyBdy3O3S9hrdayLJxJ7mriBR4qgUaUygAs".into(),
-            iap_config: None,
-        }
-    }
-}
-
 #[derive(Debug, Deserialize, Serialize)]
 pub struct OzConfig {
     /// Root URL for the Oz (ambient agent management) dashboard.
@@ -74,15 +88,6 @@ pub struct OzConfig {
     /// to [`WarpServerConfig::server_root_url`]. This exists so the audience is not overridden
     /// when a custom server root URL is provided (e.g. an ngrok URL for local development).
     pub workload_audience_url: Option<Cow<'static, str>>,
-}
-
-impl OzConfig {
-    pub fn production() -> Self {
-        Self {
-            oz_root_url: "https://oz.warp.dev".into(),
-            workload_audience_url: None,
-        }
-    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -169,3 +174,7 @@ pub struct McpOAuthLoopbackClientConfig {
     #[serde(default)]
     pub client_secret: Option<Cow<'static, str>>,
 }
+
+#[cfg(test)]
+#[path = "config_tests.rs"]
+mod tests;

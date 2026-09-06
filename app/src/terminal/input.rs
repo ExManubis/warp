@@ -9862,7 +9862,7 @@ impl Input {
         if matches!(new_input_type, InputType::Shell) && !ai_input_model.is_input_type_locked() {
             let current_input_text = self.buffer_text(ctx);
             if !current_input_text.is_empty() {
-                let event_payload = if ChannelState::channel().is_dogfood() {
+                let event_payload = if cfg!(debug_assertions) {
                     AgentModeAutoDetectionFalsePositivePayload::InternalDogfoodUsers {
                         input_text: current_input_text,
                     }

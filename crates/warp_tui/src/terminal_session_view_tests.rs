@@ -1165,28 +1165,12 @@ fn log_bundle_success_message_includes_the_absolute_path() {
 #[test]
 fn tui_cli_shell_command_uses_channel_entry_points() {
     assert_eq!(
-        super::tui_cli_shell_command(Channel::Local, "--version"),
-        "./script/run-tui -- --version"
-    );
-    assert_eq!(
-        super::tui_cli_shell_command(Channel::Stable, "--version"),
-        "warp --version"
-    );
-    assert_eq!(
-        super::tui_cli_shell_command(Channel::Dev, "--version"),
-        "warp-dev --version"
-    );
-    assert_eq!(
-        super::tui_cli_shell_command(Channel::Preview, "--version"),
-        "warp-preview --version"
-    );
-    assert_eq!(
-        super::tui_cli_shell_command(Channel::Oss, "--version"),
-        "warp-oss --version"
+        super::tui_cli_shell_command(Channel::Release, "--version"),
+        "promptty-tui --version"
     );
     assert_eq!(
         super::tui_cli_shell_command(Channel::Integration, "--version"),
-        "warp-integration --version"
+        "promptty-integration --version"
     );
 }
 
@@ -7225,12 +7209,8 @@ fn status_email_fallback_chain_requires_a_validated_identity() {
 #[test]
 fn resume_shell_commands_use_shared_tui_launcher() {
     assert_eq!(
-        super::tui_resume_shell_command(Channel::Local, "conversation-token"),
-        "./script/run-tui -- --resume conversation-token"
-    );
-    assert_eq!(
-        super::tui_resume_shell_command(Channel::Preview, "conversation-token"),
-        "warp-preview --resume conversation-token"
+        super::tui_resume_shell_command(Channel::Release, "conversation-token"),
+        "promptty-tui --resume conversation-token"
     );
 }
 

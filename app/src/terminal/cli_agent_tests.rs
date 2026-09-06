@@ -585,6 +585,9 @@ fn test_oh_my_pi_supports_bash_mode() {
 #[test]
 fn test_warp_tui_matches_binaries_and_launchers() {
     // Direct binary names.
+    assert!(CLIAgent::WarpTui.matches_command("promptty", None));
+    assert!(CLIAgent::WarpTui.matches_command("promptty-tui", None));
+    assert!(CLIAgent::WarpTui.matches_command("promptty-integration", None));
     assert!(CLIAgent::WarpTui.matches_command("warp", None));
     assert!(CLIAgent::WarpTui.matches_command("warp-preview", None));
     assert!(CLIAgent::WarpTui.matches_command("warp-dev", None));
@@ -594,14 +597,17 @@ fn test_warp_tui_matches_binaries_and_launchers() {
     assert!(CLIAgent::WarpTui.matches_command("./script/run-tui", None));
     assert!(CLIAgent::WarpTui.matches_command("script/run-tui", None));
     // Absolute / relative paths to the binary.
-    assert!(CLIAgent::WarpTui.matches_command("/workspace/warp/target/debug/warp-tui", None,));
+    assert!(
+        CLIAgent::WarpTui.matches_command("/workspace/promptty/target/debug/promptty-tui", None,)
+    );
+    assert!(CLIAgent::WarpTui.matches_command("./target/debug/promptty-tui", None));
     assert!(CLIAgent::WarpTui.matches_command("./target/debug/warp-tui", None));
     assert!(CLIAgent::WarpTui.matches_command(
         "/Applications/WarpPreview.app/Contents/MacOS/warp-preview --resume abc",
         None,
     ));
     // With arguments and leading whitespace.
-    assert!(CLIAgent::WarpTui.matches_command("  warp --resume abc", None));
+    assert!(CLIAgent::WarpTui.matches_command("  promptty-tui --resume abc", None));
 }
 
 #[test]
@@ -631,10 +637,13 @@ fn test_warp_tui_does_not_match_other_commands() {
 #[test]
 fn test_warp_tui_variant_properties() {
     assert!(CLIAgent::Claude.supports_cli_agent_footer());
-    assert_eq!(CLIAgent::WarpTui.command_prefix(), "warp");
+    assert_eq!(CLIAgent::WarpTui.command_prefix(), "promptty");
     assert_eq!(
         CLIAgent::WarpTui.command_prefixes(),
         &[
+            "promptty",
+            "promptty-tui",
+            "promptty-integration",
             "warp",
             "warp-preview",
             "warp-dev",

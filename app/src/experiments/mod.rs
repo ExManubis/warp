@@ -367,11 +367,8 @@ pub trait Experiment<T: Experiment<T>>: FromStr {
         GROUP_ASSIGNMENTS.insert(Self::name(), override_group.variant());
     }
 
-    /// Returns whether user overrides should be allowed based on the channel and
-    /// experiment setting. User overrides are always allowed in Local and Dev
-    /// channels, or if the specific experiment supports overrides.
-    fn can_use_user_override(channel: Channel) -> bool {
-        Self::allow_user_overrides_in_stable() || channel.is_dogfood()
+    fn can_use_user_override(_channel: Channel) -> bool {
+        Self::allow_user_overrides_in_stable()
     }
 }
 

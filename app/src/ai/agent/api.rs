@@ -65,21 +65,14 @@ impl ServerConversationToken {
     fn debugging_payload_for_channel(
         &self,
         request_id: Option<&ServerOutputId>,
-        channel: Channel,
+        _channel: Channel,
     ) -> String {
-        if channel.is_dogfood() {
-            match request_id {
-                Some(request_id) => format!("{}?request={request_id}", self.debug_link()),
-                None => self.debug_link(),
-            }
-        } else {
-            match request_id {
-                Some(request_id) => format!(
-                    "{{\"request_id\":\"{request_id}\",\"conversation_id\":\"{}\"}}",
-                    self.as_str()
-                ),
-                None => format!("{{\"conversation_id\":\"{}\"}}", self.as_str()),
-            }
+        match request_id {
+            Some(request_id) => format!(
+                "{{\"request_id\":\"{request_id}\",\"conversation_id\":\"{}\"}}",
+                self.as_str()
+            ),
+            None => format!("{{\"conversation_id\":\"{}\"}}", self.as_str()),
         }
     }
 

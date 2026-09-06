@@ -953,27 +953,13 @@ fn latest_version_for_channel(versions: &ChannelVersions) -> Result<String> {
     latest_version_for(ChannelState::channel(), versions)
 }
 
-fn latest_version_for(channel: Channel, versions: &ChannelVersions) -> Result<String> {
-    let channel_version = match channel {
-        Channel::Dev => &versions.dev,
-        Channel::Preview => &versions.preview,
-        Channel::Stable => &versions.stable,
-        channel @ (Channel::Local | Channel::Oss | Channel::Integration) => {
-            bail!("no TUI release artifacts exist for the {channel} channel")
-        }
-    };
-    Ok(channel_version.version_info().tui_version().to_owned())
+fn latest_version_for(channel: Channel, _versions: &ChannelVersions) -> Result<String> {
+    bail!("no TUI release artifacts exist for the {channel} channel")
 }
 
 /// The Warp Agent CLI artifact endpoint for a release channel.
-fn download_endpoint(channel: Channel) -> &'static str {
-    match channel {
-        Channel::Preview => "/download/agent-cli-preview/artifact",
-        Channel::Stable => "/download/agent-cli/artifact",
-        Channel::Dev | Channel::Local | Channel::Oss | Channel::Integration => {
-            "/download/agent-cli-dev/artifact"
-        }
-    }
+fn download_endpoint(_channel: Channel) -> &'static str {
+    "/download/agent-cli/artifact"
 }
 
 /// The server's `os` query parameter for this build's platform, or `None` on

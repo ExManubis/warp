@@ -4,9 +4,6 @@
 //! depends on the platform. The Warp app must use this information to avoid rendering UI elements
 //! underneath them.
 
-#[cfg(windows)]
-pub mod windows;
-
 #[cfg(any(target_os = "linux", target_os = "freebsd"))]
 mod linux_only {
     pub(super) use std::sync::Arc;

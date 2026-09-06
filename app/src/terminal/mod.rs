@@ -81,9 +81,6 @@ mod waterfall_gap_element;
 mod writeable_pty;
 #[cfg(feature = "tui")]
 pub use writeable_pty::{PtyIntent, PtyIntentEvent, TerminalSurface};
-#[cfg(windows)]
-pub mod wsl;
-
 pub mod cli_agent;
 pub use cli_agent::CLIAgent;
 pub(crate) mod cli_agent_sessions;

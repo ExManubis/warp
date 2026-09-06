@@ -5,9 +5,6 @@ members = [
 ]
 resolver = "2"
 
-# Include all members except serve-wasm (since it's a helper helper for serving
-# wasm binaries and not something we want to regularly compile or run
-# tests against) and integration (since it is only used for testing).
 default-members = [
   "app",
   "crates/channel_versions",
@@ -31,10 +28,8 @@ publish = false
 # Local workspace crates. This lets us reference them in other crates without specifying a path.
 ai = { path = "crates/ai" }
 ai_types = { path = "crates/ai_types" }
-app-installation-detection = { path = "crates/app-installation-detection" }
 asset_cache = { path = "crates/asset_cache" }
 asset_macro = { path = "crates/asset_macro" }
-build_cache = { path = "crates/build_cache" }
 channel_versions = { path = "crates/channel_versions", default-features = false }
 command = { path = "crates/command" }
 command-signatures-v2 = { path = "crates/command-signatures-v2" }
@@ -50,7 +45,6 @@ handlebars = { path = "crates/handlebars" }
 http_client = { path = "crates/http_client" }
 http_server = { path = "crates/http_server" }
 input_classifier = { path = "crates/input_classifier" }
-integration = { path = "crates/integration" }
 ipc = { path = "crates/ipc" }
 ipynb_parser = { path = "crates/ipynb_parser" }
 jsonrpc = { path = "crates/jsonrpc" }
@@ -81,7 +75,6 @@ virtual-fs = { path = "crates/virtual_fs" }
 voice_input = { path = "crates/voice_input" }
 warp = { path = "app" }
 warp_assets = { path = "crates/warp_assets" }
-warp_channel_config = { path = "crates/warp_channel_config" }
 warp_cli = { path = "crates/warp_cli" }
 warp_completer = { path = "crates/warp_completer" }
 warp_core = { path = "crates/warp_core" }
@@ -95,7 +88,6 @@ warp_isolation_platform = { path = "crates/isolation_platform" }
 warp_js = { path = "crates/warp_js" }
 warp_logging = { path = "crates/warp_logging" }
 warp_managed_secrets = { path = "crates/managed_secrets" }
-warp_multi_agent_client = { path = "crates/warp_multi_agent_client" }
 warp_ripgrep = { path = "crates/warp_ripgrep" }
 warp_search_core = { path = "crates/warp_search_core" }
 warp_server_auth = { path = "crates/warp_server_auth" }
@@ -300,6 +292,7 @@ tracing = "0.1.40"
 tracing-futures = "0.2.5"
 tracing-opentelemetry = { version = "0.33.0", default-features = false }
 tracing-subscriber = { version = "0.3.22", default-features = false, features = [
+  "env-filter",
   "registry",
   "std",
 ] }
@@ -402,22 +395,6 @@ sysinfo = { version = "0.37.0", default-features = false, features = [
   "system",
   "multithread",
 ] }
-windows = { version = "0.62.2", features = [
-  "Win32",
-  "Win32_System",
-  "Win32_System_Kernel",
-  "Win32_System_Threading",
-  "Wdk_System",
-  "Wdk_System_SystemServices",
-  "Win32_System_Com",
-  "Win32_System_SecurityCenter",
-  "Win32_System_SystemInformation",
-  "Win32_System_Console",
-] }
-windows-core = { version = "0.62.2" }
-windows-registry = { version = "0.2.0" }
-windows-result = { version = "0.2.0" }
-winreg = "0.55.0"
 typed-path = "0.10.0"
 streaming-iterator = "0.1.0"
 derivative = "2.2.0"
