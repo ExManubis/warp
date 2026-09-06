@@ -8,8 +8,7 @@ use url::{Origin, ParseError, Url};
 use super::Channel;
 use crate::AppId;
 use crate::channel::config::{
-    ChannelConfig, IapConfig, McpOAuthProviderConfig, OzConfig, RudderStackDestination,
-    WarpServerConfig,
+    ChannelConfig, IapConfig, McpOAuthProviderConfig, RudderStackDestination,
 };
 use crate::features::FeatureFlag;
 
@@ -41,16 +40,7 @@ impl ChannelState {
         Self {
             channel,
             additional_features: Default::default(),
-            config: ChannelConfig {
-                app_id,
-                logfile_name: "".into(),
-                server_config: WarpServerConfig::production(),
-                oz_config: OzConfig::production(),
-                telemetry_config: None,
-                autoupdate_config: None,
-                crash_reporting_config: None,
-                mcp_static_config: None,
-            },
+            config: ChannelConfig::local_only(app_id, ""),
         }
     }
 
@@ -92,14 +82,18 @@ impl ChannelState {
     pub fn override_server_root_url(url: impl Into<Cow<'static, str>>) -> Result<(), ParseError> {
         let url = url.into();
         Url::parse(&url)?;
-        CHANNEL_STATE.lock().config.server_config.server_root_url = url;
+        if let Some(server_config) = &mut CHANNEL_STATE.lock().config.server_config {
+            server_config.server_root_url = url;
+        }
         Ok(())
     }
 
     pub fn override_ws_server_url(url: impl Into<Cow<'static, str>>) -> Result<(), ParseError> {
         let url = url.into();
         Url::parse(&url)?;
-        CHANNEL_STATE.lock().config.server_config.rtc_server_url = url;
+        if let Some(server_config) = &mut CHANNEL_STATE.lock().config.server_config {
+            server_config.rtc_server_url = url;
+        }
         Ok(())
     }
 
@@ -108,11 +102,9 @@ impl ChannelState {
     ) -> Result<(), ParseError> {
         let url = url.into();
         Url::parse(&url)?;
-        CHANNEL_STATE
-            .lock()
-            .config
-            .server_config
-            .session_sharing_server_url = Some(url);
+        if let Some(server_config) = &mut CHANNEL_STATE.lock().config.server_config {
+            server_config.session_sharing_server_url = Some(url);
+        }
         Ok(())
     }
 
@@ -214,17 +206,29 @@ impl ChannelState {
             .unwrap_or_default()
     }
 
+    /// Whether this build has a Warp server config and can therefore contact
+    /// Warp-hosted endpoints. Local-only builds ship with `server_config: None`.
+    pub fn cloud_enabled() -> bool {
+        CHANNEL_STATE.lock().config.cloud_enabled()
+    }
+
     pub fn firebase_api_key() -> Cow<'static, str> {
         CHANNEL_STATE
             .lock()
             .config
             .server_config
-            .firebase_auth_api_key
-            .clone()
+            .as_ref()
+            .map(|sc| sc.firebase_auth_api_key.clone())
+            .unwrap_or_default()
     }
 
     pub fn iap_config() -> Option<IapConfig> {
-        CHANNEL_STATE.lock().config.server_config.iap_config.clone()
+        CHANNEL_STATE
+            .lock()
+            .config
+            .server_config
+            .as_ref()
+            .and_then(|sc| sc.iap_config.clone())
     }
 
     pub fn ws_server_url() -> Cow<'static, str> {
@@ -232,8 +236,9 @@ impl ChannelState {
             .lock()
             .config
             .server_config
-            .rtc_server_url
-            .clone()
+            .as_ref()
+            .map(|sc| sc.rtc_server_url.clone())
+            .unwrap_or_default()
     }
 
     /// Returns the HTTP(S) root URL for the RTC server. Used for HTTP endpoints
@@ -262,13 +267,24 @@ impl ChannelState {
             if #[cfg(feature = "test-util")] {
                 Some(Cow::Borrowed("fake_session_sharing_url"))
             } else {
-                CHANNEL_STATE.lock().config.server_config.session_sharing_server_url.clone()
+                CHANNEL_STATE
+                    .lock()
+                    .config
+                    .server_config
+                    .as_ref()
+                    .and_then(|sc| sc.session_sharing_server_url.clone())
             }
         }
     }
 
     pub fn oz_root_url() -> Cow<'static, str> {
-        CHANNEL_STATE.lock().config.oz_config.oz_root_url.clone()
+        CHANNEL_STATE
+            .lock()
+            .config
+            .oz_config
+            .as_ref()
+            .map(|oz| oz.oz_root_url.clone())
+            .unwrap_or_default()
     }
 
     pub fn server_root_url() -> Cow<'static, str> {
@@ -276,15 +292,26 @@ impl ChannelState {
             if #[cfg(feature = "test-util")] {
                 Cow::Owned(MOCK_SERVER_URL.clone())
             } else {
-                CHANNEL_STATE.lock().config.server_config.server_root_url.clone()
+                CHANNEL_STATE
+                    .lock()
+                    .config
+                    .server_config
+                    .as_ref()
+                    .map(|sc| sc.server_root_url.clone())
+                    .unwrap_or_default()
             }
         }
     }
 
     pub fn workload_audience_url() -> Cow<'static, str> {
         let state = CHANNEL_STATE.lock();
-        match &state.config.oz_config.workload_audience_url {
-            Some(url) => url.clone(),
+        match state
+            .config
+            .oz_config
+            .as_ref()
+            .and_then(|oz| oz.workload_audience_url.clone())
+        {
+            Some(url) => url,
             None => {
                 drop(state);
                 Self::server_root_url()
@@ -294,9 +321,7 @@ impl ChannelState {
 
     // Returns the origin url, with scheme, domain, and ports (if any)
     pub fn server_root_domain() -> Origin {
-        Url::parse(&Self::server_root_url())
-            .expect("Server root URL should be valid")
-            .origin()
+        origin_from_server_root_url(&Self::server_root_url())
     }
 
     /// Returns the rudderstack destination for all events that don't contain user-generated content.
@@ -398,6 +423,17 @@ impl ChannelState {
             Channel::Local => "warplocal",
             Channel::Oss => "warposs",
         }
+    }
+}
+
+/// Parses a server-root URL into an [`Origin`]. Empty or invalid URLs (local-only
+/// builds) fall back to a loopback origin so callers never panic.
+fn origin_from_server_root_url(url: &str) -> Origin {
+    match Url::parse(url) {
+        Ok(url) => url.origin(),
+        Err(_) => Url::parse("http://127.0.0.1")
+            .expect("fallback origin is valid")
+            .origin(),
     }
 }
 

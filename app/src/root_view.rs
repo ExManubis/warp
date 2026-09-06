@@ -1928,9 +1928,11 @@ impl RootView {
                             onboarding_view,
                             target: AuthOnboardingTarget::Workspace(workspace_args_box),
                         }
-                    } else if FeatureFlag::SkipFirebaseAnonymousUser.is_enabled() {
-                        // When SkipFirebaseAnonymousUser is enabled, skip the login screen
-                        // entirely and go directly into the workspace.
+                    } else if !ChannelState::cloud_enabled()
+                        || FeatureFlag::SkipFirebaseAnonymousUser.is_enabled()
+                    {
+                        // Local-only builds have no Warp account. SkipFirebaseAnonymousUser
+                        // also skips the login screen and goes straight to the workspace.
                         AuthOnboardingState::Terminal(workspace_args.create_workspace(ctx))
                     } else {
                         AuthOnboardingState::Auth(workspace_args.into())
