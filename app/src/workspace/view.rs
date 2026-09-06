@@ -19861,6 +19861,7 @@ impl Workspace {
         &self,
         tab_index: usize,
         tab_bar_state: TabBarState,
+        trailing_margin: f32,
         ctx: &AppContext,
     ) -> Box<dyn Element> {
         let tab = &self.tabs[tab_index];
@@ -19888,6 +19889,7 @@ impl Workspace {
             ctx,
         )
         .with_multi_tab_selection(self.is_tab_in_multi_tab_selection(tab_index))
+        .with_trailing_margin(trailing_margin)
         .build()
         .finish()
     }
@@ -20116,6 +20118,12 @@ impl Workspace {
 
         let positioned_container =
             SavePosition::new(positioned_container, &htab_group_position_id(group_id)).finish();
+
+        // Margin must sit inside Shrinkable. Wrapping Shrinkable in Container
+        // hides FlexParentData, so the tab bar measures this row unboundedly.
+        let positioned_container = Container::new(positioned_container)
+            .with_margin_right(FLOATING_CHROME_INSET)
+            .finish();
 
         // Flex = header + one per member + a spacer each side, so every tab is
         // one slot wide. A collapsed group claims one slot; the flex it gives up
@@ -21098,19 +21106,15 @@ impl Workspace {
                         }
                         // Filtered above; the group must exist in `tab_groups`.
                         let group = self.tab_groups[group_id].clone();
-                        tab_bar.add_child(
-                            Container::new(self.render_horizontal_tab_group(
-                                &group,
-                                *first_index,
-                                *run_len,
-                                tab_bar_state,
-                                *first_index == 0,
-                                appearance,
-                                ctx,
-                            ))
-                            .with_margin_right(FLOATING_CHROME_INSET)
-                            .finish(),
-                        );
+                        tab_bar.add_child(self.render_horizontal_tab_group(
+                            &group,
+                            *first_index,
+                            *run_len,
+                            tab_bar_state,
+                            *first_index == 0,
+                            appearance,
+                            ctx,
+                        ));
                     }
                     TabBarSlot::Single { index } => {
                         let i = *index;
@@ -21126,17 +21130,19 @@ impl Workspace {
                                 ConstrainedBox::new(self.render_tab_in_tab_bar(
                                     i,
                                     tab_bar_state,
+                                    0.,
                                     ctx,
                                 ))
                                 .with_width(0.)
                                 .finish(),
                             );
                         } else {
-                            tab_bar.add_child(
-                                Container::new(self.render_tab_in_tab_bar(i, tab_bar_state, ctx))
-                                    .with_margin_right(FLOATING_CHROME_INSET)
-                                    .finish(),
-                            );
+                            tab_bar.add_child(self.render_tab_in_tab_bar(
+                                i,
+                                tab_bar_state,
+                                FLOATING_CHROME_INSET,
+                                ctx,
+                            ));
                         }
                     }
                 }
