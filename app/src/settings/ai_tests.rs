@@ -984,9 +984,8 @@ fn ai_autodetection_defaults_to_opt_in() {
             // NLD is opt-in: a fresh user who never touched the setting has it off.
             // This fails before the default flip (default was `true`) and passes after.
             assert!(!*settings.ai_autodetection_enabled_internal.value());
-            // AI is enabled by default, so the getter reflects the opt-in setting
-            // rather than a disabled-AI state.
-            assert!(settings.is_any_ai_enabled(ctx));
+            // Warp Agent is off by default until a local LLM client exists.
+            assert!(!settings.is_any_ai_enabled(ctx));
             assert!(!settings.is_ai_autodetection_enabled(ctx));
         });
     });
@@ -997,6 +996,11 @@ fn ai_autodetection_setting_can_be_toggled_on_and_off() {
     App::test((), |mut app| async move {
         initialize_settings_for_tests(&mut app);
         add_ai_enablement_dependencies_for_test(&mut app);
+
+        // The autodetection getter is gated on Warp Agent being on.
+        AISettings::handle(&app).update(&mut app, |settings, ctx| {
+            settings.is_any_ai_enabled.set_value(true, ctx).unwrap();
+        });
 
         // Mirrors what `/enable-natural-language-detection` does in the TUI.
         AISettings::handle(&app).update(&mut app, |settings, ctx| {
